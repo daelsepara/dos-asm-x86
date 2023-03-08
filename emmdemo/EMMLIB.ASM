@@ -274,9 +274,11 @@ EMM_INIT PROC FAR
 	JMP @@EXIT3
 
 @@EXIT2:
-	XOR AX, AX
-	XOR BX, BX
-	XOR DX, DX
+	PUSHF
+	XOR AX, AX		; Adding PUSHF/POPF
+	XOR BX, BX		; ... because XOR
+	XOR DX, DX		; ... alters FLAGS
+	POPF
 		
 @@EXIT3:
 	POP DS			; Restore DS
