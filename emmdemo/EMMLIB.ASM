@@ -1,8 +1,8 @@
 ; Expanded Memory Manager Library
 		
-		LOCALS @@
+	LOCALS @@
 		
-		TITLE EMMLIB
+	TITLE EMMLIB
 
 EMMDSEG SEGMENT PARA PUBLIC 'DATA'
 EMMNAME	DB "EMMXXXX0$"		; Expanded Memory Manager Driver Name
@@ -13,7 +13,7 @@ EMMFREE	DW 0H                   ; Number of unallocated pages
 EMMDSEG ENDS
 
 EMMCSEG SEGMENT PARA PUBLIC 'CODE'
-		ASSUME CS:EMMCSEG, DS:EMMDSEG
+	ASSUME CS:EMMCSEG, DS:EMMDSEG
 
 ;------ EMM_EXIT ------
 ;
@@ -26,7 +26,7 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 ; 4. Updates FLAGS on stack (CF)
 ;
 
-		PUBLIC EMM_EXIT
+	PUBLIC EMM_EXIT
 
 EMM_EXIT PROC FAR
 
