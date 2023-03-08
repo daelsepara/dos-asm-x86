@@ -41,7 +41,7 @@ EMMDEMO	PROC FAR
 		MOV AX, DSEG            ; Initialize DS
 		MOV DS, AX
 		
-		CALL FAR PTR EMM_INIT   ; Initialize Expanded Memory Manager
+		CALL FAR PTR EMM_INIT	; Initialize Expanded Memory Manager
 		JC @@ERROR              ; and EMM data. Exit on error
 
 								; On success:
@@ -89,26 +89,24 @@ EMMDEMO	ENDP
 ;
 ; Clears buffer
 ;
+; Inputs:
+;		ES:DI = Pointer to buffer
+;		CX = Size of buffer in bytes
+
 		PUBLIC CLEAR
 
 CLEAR	PROC FAR
 		
-		PUSHF
+		PUSHF					; Save registers
 		PUSH ES
 		PUSH AX
-		PUSH CX
 		PUSH DI
 		
-		MOV AX, DSEG
-		MOV ES, AX
-		XOR AX, AX
-		MOV DI, OFFSET BUFFER
-		MOV CX, 3
+		XOR AX, AX				; Clear buffer
 		CLD
-		REPZ STOSW
+		REPZ STOSB
 		
-		POP DI
-		POP CX
+		POP DI					; Restore registers
 		POP AX
 		POP ES
 		POPF
@@ -130,38 +128,35 @@ CLEAR	ENDP
 
 CONVERT	PROC FAR
 		
-		PUSHF
+		PUSHF				; Save registers
 		PUSH DS
 		PUSH ES
 		PUSH AX
 		PUSH DX
 		PUSH DI
 		
-		CALL FAR PTR CLEAR
-
 @@LOOP:
-		XOR DX, DX
-		DIV CX
+		XOR DX, DX			; Clear upper half of 32bit number in DX:AX
+		DIV CX				; Process one digit at a time
 		
-		CMP DL, 09H
+		CMP DL, 09H			; Check if remainder is not numeric
 		JA @@FIX
 		
-		ADD DL, '0'
+		ADD DL, '0'			; Convert digit to ASCII equivalent
 		JMP @@STORE
 
 @@FIX:
-		SUB DL,0AH
-		ADD DL,'A'
+		ADD DL, 37H			; Convert digit to A-Z
 		
 @@STORE:                
-		MOV [DI], DL
+		MOV [DI], DL		; Store in buffer then move to next location
 		DEC DI
-		OR AX, AX
+		OR AX, AX			; Check if there are any digits left to convert
 		JZ @@END
 		JMP @@LOOP
 		
 @@END:
-		POP DI
+		POP DI				; Restore registers
 		POP DX
 		POP AX
 		POP ES
@@ -185,13 +180,13 @@ CONVERT ENDP
 
 PRINT	PROC FAR
 		
-		PUSHF
+		PUSHF					; Save registers
 		PUSH AX
 		
-		MOV AH, 09H
+		MOV AH, 09H				; Print using DOS service
 		INT 21H
 		
-		POP AX
+		POP AX					; Restore registers
 		POPF
 		
 		RET
@@ -211,7 +206,7 @@ PRINT	ENDP
 
 CPRINT	PROC FAR
 
-		PUSHF
+		PUSHF					; Save Registers
 		PUSH DS
 		PUSH ES
 		PUSH DX
@@ -221,15 +216,21 @@ CPRINT	PROC FAR
 		MOV AX, DSEG
 		MOV DS, AX				; Point DS:DX to buffer
 		MOV DX, OFFSET BUFFER
-		MOV ES, AX				; Point ES:DI to end of buffer
-		MOV DI, DX
-		ADD DI, 05H			
-		POP AX					; Restore number in ax
+		MOV ES, AX				
+		MOV DI, DX				; Point ES:DI to start of buffer
 		
-		CALL CONVERT            ; Do conversion
-		CALL PRINT				; ... then print
+		PUSH CX					; Clear buffer (6 characters)
+		MOV CX, 06H
+		CALL FAR PTR CLEAR
 		
-		POP DI
+		POP CX					; Restore base number in CX
+		ADD DI, 05H				; Point ES:DI to end of buffer
+		POP AX					; Restore number in AX
+		
+		CALL FAR PTR CONVERT	; Do conversion
+		CALL FAR PTR PRINT		; ... then print
+		
+		POP DI					; Restore registers
 		POP DX
 		POP ES
 		POP DS
@@ -253,8 +254,8 @@ CPRINT	ENDP
 
 INFO	PROC FAR
 		
-		CALL CPRINT				; Convert and print number
-		CALL PRINT				; Print caption
+		CALL FAR PTR CPRINT				; Convert and print number
+		CALL FAR PTR PRINT				; Print caption
 
 		RET
 
