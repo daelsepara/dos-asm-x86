@@ -16,9 +16,9 @@ STOTAL	DB " Total 16K pages",0AH,0DH,"$"
 SFREE	DB "  Free 16K pages",0AH,0DH,"$"
 SNONE	DB "Expanded Memory not available",0AH,0DH,"$"
 BUFFER	DB 6 DUP ('0'), "$"
-EMMBASE	DW 0H					; EMM Page Frame Segment
-EMMSIZE	DW 0H           		; Total number of pages in system
-EMMFREE	DW 0H					; Number of unallocated pages
+EMMBASE	DW 0H			; EMM Page Frame Segment
+EMMSIZE	DW 0H          		; Total number of pages in system
+EMMFREE	DW 0H			; Number of unallocated pages
 DSEG ENDS
 
 CSEG    SEGMENT PARA PUBLIC 'CODE'
@@ -32,56 +32,56 @@ CSEG    SEGMENT PARA PUBLIC 'CODE'
 ;
 ; Uses EMMLIB
 
-		PUBLIC EMMDEMO
+	PUBLIC EMMDEMO
 
-		EXTRN EMM_INIT:FAR
+	EXTRN EMM_INIT:FAR
 
 EMMDEMO	PROC FAR
 
-		MOV AX, DSEG            ; Initialize DS
-		MOV DS, AX
+	MOV AX, DSEG            ; Initialize DS
+	MOV DS, AX
 		
-		CALL FAR PTR EMM_INIT	; Initialize Expanded Memory Manager
-		JC @@ERROR              ; and EMM data. Exit on error
+	CALL FAR PTR EMM_INIT	; Initialize Expanded Memory Manager
+	JC @@ERROR              ; and EMM data. Exit on error
 
-								; On success:
-								; AX = Base Frame
-								; BX = Free pages
-								; DX = Total pages
+				; On success:
+				; AX = Base Frame
+				; BX = Free pages
+				; DX = Total pages
+	
+	MOV DS:[EMMBASE], AX    ; Save values
+	MOV DS:[EMMFREE], BX
+	MOV DS:[EMMSIZE], DX
+	
+	MOV CX, 10H             ; Set conversion to base 16
+	MOV AX, DS:[EMMBASE]    ; Show base frame info
+	MOV DX, OFFSET SBASE    
+	CALL FAR PTR INFO
 		
-		MOV DS:[EMMBASE], AX    ; Save values
-		MOV DS:[EMMFREE], BX
-		MOV DS:[EMMSIZE], DX
+	MOV CX, 0AH             ; Set succeeding conversions to base 10
+	MOV AX, 4000H           ; Show page size 4000H = 16384 (size of page in bytes)
+	MOV DX, OFFSET SPAGE
+	CALL FAR PTR INFO
 		
-		MOV CX, 10H             ; Set conversion to base 16
-		MOV AX, DS:[EMMBASE]    ; Show base frame info
-		MOV DX, OFFSET SBASE    
-		CALL FAR PTR INFO
+	MOV AX, DS:[EMMSIZE]    ; Show total number of pages
+	MOV DX, OFFSET STOTAL   
+	CALL FAR PTR INFO
 		
-		MOV CX, 0AH             ; Set succeeding conversions to base 10
-		MOV AX, 4000H           ; Show page size 4000H = 16384 (size of page in bytes)
-		MOV DX, OFFSET SPAGE
-		CALL FAR PTR INFO
-		
-		MOV AX, DS:[EMMSIZE]    ; Show total number of pages
-		MOV DX, OFFSET STOTAL   
-		CALL FAR PTR INFO
-		
-		MOV AX, DS:[EMMFREE]    ; Show free pages
-		MOV DX, OFFSET SFREE
-		CALL FAR PTR INFO
+	MOV AX, DS:[EMMFREE]    ; Show free pages
+	MOV DX, OFFSET SFREE
+	CALL FAR PTR INFO
 				
-		MOV AX, 4C00H           ; Set exit code to 0
-		JMP @@EXIT
+	MOV AX, 4C00H           ; Set exit code to 0
+	JMP @@EXIT
 
 @@ERROR:
-		MOV DX, OFFSET SNONE    ; Expanded memory manager is not available
-		CALL FAR PTR PRINT
+	MOV DX, OFFSET SNONE    ; Expanded memory manager is not available
+	CALL FAR PTR PRINT
 		
-		MOV AX, 4C01H           ; Set exit code to 1
+	MOV AX, 4C01H           ; Set exit code to 1
 
 @@EXIT:         
-		INT 21H
+	INT 21H
 
 EMMDEMO	ENDP
 
@@ -90,28 +90,28 @@ EMMDEMO	ENDP
 ; Clears buffer
 ;
 ; Inputs:
-;		ES:DI = Pointer to buffer
-;		CX = Size of buffer in bytes
+;	ES:DI = Pointer to buffer
+;	CX = Size of buffer in bytes
 
-		PUBLIC CLEAR
+	PUBLIC CLEAR
 
 CLEAR	PROC FAR
 		
-		PUSHF					; Save registers
-		PUSH ES
-		PUSH AX
-		PUSH DI
+	PUSHF			; Save registers
+	PUSH ES
+	PUSH AX
+	PUSH DI
 		
-		XOR AX, AX				; Clear buffer
-		CLD
-		REPZ STOSB
+	XOR AX, AX		; Clear buffer
+	CLD
+	REPZ STOSB
 		
-		POP DI					; Restore registers
-		POP AX
-		POP ES
-		POPF
+	POP DI			; Restore registers
+	POP AX
+	POP ES
+	POPF
 		
-		RET
+	RET
 
 CLEAR	ENDP
 
@@ -120,50 +120,50 @@ CLEAR	ENDP
 ; Convert number to string in buffer
 ;
 ; Inputs:
-;		AX = Number
+;	AX = Number
 ;       CX = Base
-;		ES:DI = Pointer to end of buffer
+;	ES:DI = Pointer to end of buffer
 
 		PUBLIC CONVERT
 
 CONVERT	PROC FAR
 		
-		PUSHF				; Save registers
-		PUSH DS
-		PUSH ES
-		PUSH AX
-		PUSH DX
-		PUSH DI
-		
+	PUSHF			; Save registers
+	PUSH DS
+	PUSH ES
+	PUSH AX
+	PUSH DX
+	PUSH DI
+	
 @@LOOP:
-		XOR DX, DX			; Clear upper half of 32bit number in DX:AX
-		DIV CX				; Process one digit at a time
+	XOR DX, DX		; Clear upper half of 32bit number in DX:AX
+	DIV CX			; Process one digit at a time
 		
-		CMP DL, 09H			; Check if remainder is not numeric
-		JA @@FIX
+	CMP DL, 09H		; Check if remainder is not numeric
+	JA @@FIX
 		
-		ADD DL, '0'			; Convert digit to ASCII equivalent
-		JMP @@STORE
+	ADD DL, '0'		; Convert digit to ASCII equivalent
+	JMP @@STORE
 
 @@FIX:
-		ADD DL, 37H			; Convert digit to A-Z
+	ADD DL, 37H		; Convert digit to A-Z
 		
 @@STORE:                
-		MOV [DI], DL		; Store in buffer then move to next location
-		DEC DI
-		OR AX, AX			; Check if there are any digits left to convert
-		JZ @@END
-		JMP @@LOOP
+	MOV [DI], DL		; Store in buffer then move to next location
+	DEC DI
+	OR AX, AX		; Check if there are any digits left to convert
+	JZ @@END
+	JMP @@LOOP
 		
 @@END:
-		POP DI				; Restore registers
-		POP DX
-		POP AX
-		POP ES
-		POP DS
-		POPF
+	POP DI			; Restore registers
+	POP DX
+	POP AX
+	POP ES
+	POP DS
+	POPF
 
-		RET
+	RET
 
 CONVERT ENDP
 
@@ -174,22 +174,22 @@ CONVERT ENDP
 ;
 ; Inputs:
 ;
-;		DS:DX = Offset to string ($-terminated)
+;	DS:DX = Offset to string ($-terminated)
 
-		PUBLIC PRINT
+	PUBLIC PRINT
 
 PRINT	PROC FAR
 		
-		PUSHF					; Save registers
-		PUSH AX
+	PUSHF			; Save registers
+	PUSH AX
 		
-		MOV AH, 09H				; Print using DOS service
-		INT 21H
+	MOV AH, 09H		; Print using DOS service
+	INT 21H
 		
-		POP AX					; Restore registers
-		POPF
+	POP AX			; Restore registers
+	POPF
 		
-		RET
+	RET
 
 PRINT	ENDP
 
@@ -206,37 +206,37 @@ PRINT	ENDP
 
 CPRINT	PROC FAR
 
-		PUSHF					; Save Registers
-		PUSH DS
-		PUSH ES
-		PUSH DX
-		PUSH DI
+	PUSHF			; Save Registers
+	PUSH DS
+	PUSH ES
+	PUSH DX
+	PUSH DI
 
-		PUSH AX					; Save number in stack
-		MOV AX, DSEG
-		MOV DS, AX				; Point DS:DX to buffer
-		MOV DX, OFFSET BUFFER
-		MOV ES, AX				
-		MOV DI, DX				; Point ES:DI to start of buffer
+	PUSH AX			; Save number in stack
+	MOV AX, DSEG
+	MOV DS, AX		; Point DS:DX to buffer
+	MOV DX, OFFSET BUFFER
+	MOV ES, AX				
+	MOV DI, DX		; Point ES:DI to start of buffer
+	
+	PUSH CX			; Clear buffer (6 characters)
+	MOV CX, 06H
+	CALL FAR PTR CLEAR
 		
-		PUSH CX					; Clear buffer (6 characters)
-		MOV CX, 06H
-		CALL FAR PTR CLEAR
+	POP CX			; Restore base number in CX
+	ADD DI, 05H		; Point ES:DI to end of buffer
+	POP AX			; Restore number in AX
 		
-		POP CX					; Restore base number in CX
-		ADD DI, 05H				; Point ES:DI to end of buffer
-		POP AX					; Restore number in AX
+	CALL FAR PTR CONVERT	; Do conversion
+	CALL FAR PTR PRINT	; ... then print
 		
-		CALL FAR PTR CONVERT	; Do conversion
-		CALL FAR PTR PRINT		; ... then print
+	POP DI			; Restore registers
+	POP DX
+	POP ES
+	POP DS
+	POPF
 		
-		POP DI					; Restore registers
-		POP DX
-		POP ES
-		POP DS
-		POPF
-		
-		RET
+	RET
 
 CPRINT	ENDP
 
@@ -246,21 +246,21 @@ CPRINT	ENDP
 ;
 ; Inputs:
 ;
-;		AX = Number to convert
-;		CX = Base
+;	AX = Number to convert
+;	CX = Base
 ;       DS:DX = Caption string
 
-		PUBLIC INFO
+	PUBLIC INFO
 
 INFO	PROC FAR
 		
-		CALL FAR PTR CPRINT				; Convert and print number
-		CALL FAR PTR PRINT				; Print caption
+	CALL FAR PTR CPRINT		; Convert and print number
+	CALL FAR PTR PRINT		; Print caption
 
-		RET
+	RET
 
 INFO	ENDP
 
 CSEG    ENDS
 
-		END EMMDEMO
+	END EMMDEMO
