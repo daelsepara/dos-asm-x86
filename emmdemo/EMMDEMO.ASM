@@ -2,12 +2,12 @@
 ;
 ; Uses EMM Library
 
-		LOCALS @@
+	LOCALS @@
+	
+	TITLE EMMDEMO
 		
-		TITLE EMMDEMO
-		
-		.MODEL SMALL
-		.STACK 0100H
+	.MODEL SMALL
+	.STACK 0100H
 
 DSEG SEGMENT    PARA PUBLIC 'DATA'
 SBASE	DB " Base frame",0AH,0DH,"$"
@@ -22,7 +22,7 @@ EMMFREE	DW 0H			; Number of unallocated pages
 DSEG ENDS
 
 CSEG    SEGMENT PARA PUBLIC 'CODE'
-		ASSUME CS:CSEG
+	ASSUME CS:CSEG
 
 ;------ EMMDEMO ------
 ;
