@@ -80,6 +80,7 @@ EMM_CHECK PROC FAR
 	PUSH ES
 	PUSH AX
 	PUSH CX
+	PUSH SI
 	PUSH DI
 		
 	PUSHF                   ; Save Flags
@@ -110,6 +111,7 @@ EMM_CHECK PROC FAR
 	POPF
 
 	POP DI			; Restore registers
+	POP SI
 	POP CX
 	POP AX
 	POP ES
