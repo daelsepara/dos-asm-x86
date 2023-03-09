@@ -14,56 +14,45 @@ EMMDSEG ENDS
 EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 		ASSUME CS:EMMCSEG, DS:EMMDSEG
 
-;------ EMM_EXIT ------
+;------ EMM_INIT ------
 ;
-; Sets CF on success/error
+; Initializes EMM data
 ;
-; 1. Assumes that flags are immediately
-;    next to the FAR return address (below)
-; 2. Assumes AL contains the error code
-; 3. Non-zero error code sets CF, is cleared otherwise
-; 4. Updates FLAGS on stack (CF)
+; Returns:
+;		On success (CF clear):
+;		AX = Base Page Frame Segment
+;		BX = Number of free/unallocated pages (each 16Kbytes)
+;		DX = Total number of pages
+;
+;		On failure (CF set):
+;		AX = BX = DX = 0000H
 
-		PUBLIC EMM_EXIT
+		PUBLIC EMM_INIT
 
-EMM_EXIT PROC FAR
+EMM_INIT PROC FAR
 
-FLG_OFF	EQU 0AH					; Offset in stack where FLAGS are stored
+		PUSHF                   ; Save FLAGS
 		
-		PUSH AX					; Save registers
-		PUSH BX
-		PUSH BP
+		CALL EMM_CHECK			; Check if Expanded Memory Manager is present
+		JC @@ERROR
 		
-		MOV BP, SP				; Use BP to address values in stack
-		MOV BX, [BP + FLG_OFF]	; Copy flags on the stack
-		PUSH BX					; ... push a copy of the flags
-								; ... in BX to STACK
-		
-		OR AL, AL				; Check error code
-		JNZ @@EXIT01
+		CALL EMM_OK             ; Check if Expanded Memory Manager is working
+		JC @@ERROR
 
-		POPF                    ; Copy BX from stack to FLAGS
-		CLC						; Clear CF because of success
-		JMP @@EXIT02
-
-@@EXIT01:
-		POPF					; Copy BX from stack to FLAGS
-		STC						; Set CF because of error
-
-@@EXIT02:
-		PUSHF					; Copy FLAGS into AX
-		POP AX
+		CALL EMM_INFO			; Get info
+		JMP @@EXIT
 		
-		MOV [BP + FLG_OFF], AX	; Modify FLAGS in stack
+@@ERROR:
+		MOV AL, 01H
+		CALL EMM_EXIT           ; Set CF flag
 		
-		POP BP					; Restore registers
-		POP BX
-		POP AX
+@@EXIT:
+		POPF					; Restore FLAGS
 		
 		RET
-
-EMM_EXIT ENDP           
 		
+EMM_INIT ENDP
+
 ;------ EMM_CHECK ------
 ;
 ; Tests for Expanded Memory Manager using the
@@ -289,45 +278,160 @@ EMM_INFO PROC FAR
 		RET
 		
 EMM_INFO ENDP
+
+;------ EMM_ALLOC -----
+;
+; Allocates pages and
+; get handle.
+;
+; Inputs:
+;		AX = Number of pages to allocate
+;
+;		On success:
+;		CF is clear
+;		AX = Handle (0001H to 00FEH)
+;
+;		On failure:
+;		AX = FFFFH
+;		CF is set
+
+		PUBLIC EMM_ALLOC
 		
-;------ EMM_INIT ------
-;
-; Initializes EMM data
-;
-; Returns:
-;		On success (CF clear):
-;		AX = Base Page Frame Segment
-;		BX = Number of free/unallocated pages (each 16Kbytes)
-;		DX = Total number of pages
-;
-;		On failure (CF set):
-;		AX = BX = DX = 0000H
-
-		PUBLIC EMM_INIT
-
-EMM_INIT PROC FAR
-
-		PUSHF                   ; Save FLAGS
+EMM_ALLOC PROC FAR
 		
-		CALL EMM_CHECK			; Check if Expanded Memory Manager is present
+		PUSH BX					; Save registers
+		PUSH DX
+		PUSHF
+		
+		CALL EMM_OK
 		JC @@ERROR
 		
-		CALL EMM_OK             ; Check if Expanded Memory Manager is working
-		JC @@ERROR
-
-		CALL EMM_INFO			; Get info
-		JMP @@EXIT
+		MOV BX, AX				; Allocate pages
+		MOV AH, 43H
+		INT 67H
 		
+		OR AH, AH
+		JNZ @@ERROR
+		
+		XOR AL, AL
+		JMP @@EXIT1
+
 @@ERROR:
 		MOV AL, 01H
-		CALL EMM_EXIT           ; Set CF flag
+
+@@EXIT1:
+		CALL EMM_EXIT			; Set CF flag
+		POPF
+		JC @@EXIT3
 		
-@@EXIT:
-		POPF					; Restore FLAGS
+		MOV AX, DX				; Copy Handle in DX
+		JMP @@EXIT4
+
+@@EXIT3:
+		MOV AX, 0FFFFH
+@@EXIT4:
+		POP DX					; Restore registers
+		POP BX
 		
 		RET
+
+EMM_ALLOC ENDP
+
+;------ EMM_FREE ------
+;
+; Frees allocated memory
+;
+; Inputs:
+;
+;		AX = Page handle to free
+;
+;		On success:
+;		CF is clear
+;
+;		On failure:
+;		CF is set
+
+		PUBLIC EMM_FREE
+
+EMM_FREE PROC FAR
+
+		PUSH AX					; Save registers
+		PUSH DX
+		PUSHF
 		
-EMM_INIT ENDP
+		MOV DX, AX				; De-allocate handle
+		MOV AH, 045H			; ... and memory
+		INT 67H					; ... in DX
+		
+		OR AH, AH				; Check if de-allocation
+		JNZ @@ERROR				; failed
+		
+		XOR AL, AL
+		JMP @@EXIT
+
+@@ERROR:
+		MOV AL, 01H
+
+@@EXIT:
+		CALL EMM_EXIT			; Set CF flag
+
+		POPF					; Restore registers
+		POP DX
+		POP AX
+		
+		RET
+
+EMM_FREE ENDP
+
+;------ EMM_EXIT ------
+;
+; Sets CF on success/error
+;
+; 1. Assumes that flags are immediately
+;    next to the FAR return address (below)
+; 2. Assumes AL contains the error code
+; 3. Non-zero error code sets CF, is cleared otherwise
+; 4. Updates FLAGS on stack (CF)
+
+		PUBLIC EMM_EXIT
+
+EMM_EXIT PROC FAR
+
+FLG_OFF	EQU 0AH					; Offset in stack where FLAGS are stored
+		
+		PUSH AX					; Save registers
+		PUSH BX
+		PUSH BP
+		
+		MOV BP, SP				; Use BP to address values in stack
+		MOV BX, [BP + FLG_OFF]	; Copy flags on the stack
+		PUSH BX					; ... push a copy of the flags
+								; ... in BX to STACK
+		
+		OR AL, AL				; Check error code
+		JNZ @@EXIT01
+
+		POPF                    ; Copy BX from stack to FLAGS
+		CLC						; Clear CF because of success
+		JMP @@EXIT02
+
+@@EXIT01:
+		POPF					; Copy BX from stack to FLAGS
+		STC						; Set CF because of error
+
+@@EXIT02:
+		PUSHF					; Copy FLAGS into AX
+		POP AX
+		
+		MOV [BP + FLG_OFF], AX	; Modify FLAGS in stack
+		
+		POP BP					; Restore registers
+		POP BX
+		POP AX
+		
+		RET
+
+EMM_EXIT ENDP           		
 
 EMMCSEG ENDS
 
