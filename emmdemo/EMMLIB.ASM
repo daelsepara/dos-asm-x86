@@ -203,9 +203,7 @@ EMM_OK	PROC FAR
 
 EMM_OK  ENDP
 
-;------ EMM_INIT ------
-;
-; Initializes EMM data
+;------ EMM_INFO ------
 ;
 ; Returns:
 ;		On success (CF clear):
@@ -216,22 +214,35 @@ EMM_OK  ENDP
 ;		On failure (CF set):
 ;		AX = BX = DX = 0000H
 
-		PUBLIC EMM_INIT
+		PUBLIC EMM_INFO
 
-EMM_INIT PROC FAR
-		
-		PUSH DS					; Save DS
-		PUSHF                   ; Save Flags
-		
+EMM_INFO PROC FAR
+
+		PUSH DS
+		PUSHF
+
 		MOV AX, EMMDSEG         ; Point to EMMLIB DATA
 		MOV DS, AX
 		
-		CALL EMM_CHECK			; Check if Expanded Memory Manager is present
-		JC @@ERROR
+		MOV AH, 41H             ; Get Page Frame Segment
+		INT 67H
 		
-		CALL EMM_OK             ; Check if Expanded Memory Manager is working
-		JC @@ERROR
+		OR AH, AH
+		JNZ @@ERROR
 		
+		MOV [EMMBASE], BX       ; Set EMM Page Frame Segment
+		
+		MOV AH, 42H             ; Get Page Counts
+		INT 67H
+		
+		OR AH, AH
+		JNZ @@ERROR
+		
+		MOV [EMMSIZE], DX       ; Set total number of pages
+		MOV [EMMFREE], BX       ; Set total number of unallocated pages
+		
+		XOR AL, AL              ; No error
+		JMP @@EXIT1
 		MOV AH, 41H             ; Get Page Frame Segment
 		INT 67H
 		
@@ -257,9 +268,7 @@ EMM_INIT PROC FAR
 
 @@EXIT1:
 		CALL EMM_EXIT           ; Set CF flag
-
 		POPF
-		
 		JC @@EXIT2				; Exit on error
 
 		MOV AX, [EMMBASE]
@@ -276,6 +285,45 @@ EMM_INIT PROC FAR
 		
 @@EXIT3:
 		POP DS					; Restore DS
+		
+		RET
+		
+EMM_INFO ENDP
+		
+;------ EMM_INIT ------
+;
+; Initializes EMM data
+;
+; Returns:
+;		On success (CF clear):
+;		AX = Base Page Frame Segment
+;		BX = Number of free/unallocated pages (each 16Kbytes)
+;		DX = Total number of pages
+;
+;		On failure (CF set):
+;		AX = BX = DX = 0000H
+
+		PUBLIC EMM_INIT
+
+EMM_INIT PROC FAR
+
+		PUSHF                   ; Save FLAGS
+		
+		CALL EMM_CHECK			; Check if Expanded Memory Manager is present
+		JC @@ERROR
+		
+		CALL EMM_OK             ; Check if Expanded Memory Manager is working
+		JC @@ERROR
+
+		CALL EMM_INFO			; Get info
+		JMP @@EXIT
+		
+@@ERROR:
+		MOV AL, 01H
+		CALL EMM_EXIT           ; Set CF flag
+		
+@@EXIT:
+		POPF					; Restore FLAGS
 		
 		RET
 		
