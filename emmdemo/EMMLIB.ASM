@@ -360,7 +360,7 @@ EMM_FREE PROC FAR
 		PUSHF
 		
 		MOV DX, AX				; De-allocate handle
-		MOV AH, 045H			; ... and memory
+		MOV AH, 45H				; ... and memory
 		INT 67H					; ... in DX
 		
 		OR AH, AH				; Check if de-allocation
