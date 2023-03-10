@@ -10,15 +10,28 @@
 		.STACK 0100H
 
 DSEG 	SEGMENT PARA PUBLIC 'DATA'
-SBASE	DB " Base frame", 0AH, 0DH, "$"
-SPAGE	DB " Page size in bytes", 0AH, 0DH, "$"
-STOTAL	DB " Total 16K pages", 0AH, 0DH, "$"
-SFREE	DB "  Free 16K pages", 0AH, 0DH, "$"
-SNONE	DB "Expanded Memory not available",0AH,0DH,"$"
+
+NEWLINE	EQU 0AH, 0DH, "$"		; New line
+ALLOC	EQU 0100H				; Number of pages to allocate
+
+SENDL	DB NEWLINE
+SBASE	DB " Base frame", NEWLINE
+SPAGE	DB " Page size in bytes", NEWLINE
+STOTAL	DB " Total 16K pages", NEWLINE
+SFREE	DB "  Free 16K pages", NEWLINE
+SALLOC	DB " Pages allocated", NEWLINE
+SNONE	DB "Expanded Memory not available", NEWLINE
+SOK		DB "Expanded Memory allocated", NEWLINE
+SFAIL	DB "Expanded Memory not allocated", NEWLINE
+SFREED	DB "Expanded Memory freed", NEWLINE
+SLEAK	DB "Expanded Memory not freed", NEWLINE
+SLESS	DB "Not enough expanded memory", NEWLINE
 BUFFER	DB 06H DUP ('0'), "$"
 EMMBASE	DW 0H					; EMM Page Frame Segment
 EMMSIZE	DW 0H           		; Total number of pages in system
 EMMFREE	DW 0H					; Number of unallocated pages
+EMMHNDL DW 0H					; Handle
+
 DSEG ENDS
 
 CSEG    SEGMENT PARA PUBLIC 'CODE'
@@ -34,7 +47,7 @@ CSEG    SEGMENT PARA PUBLIC 'CODE'
 
 		PUBLIC EMMDEMO
 
-		EXTRN EMM_INIT:FAR
+		EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR
 
 EMMDEMO	PROC FAR
 
@@ -42,13 +55,19 @@ EMMDEMO	PROC FAR
 		MOV DS, AX
 		
 		CALL FAR PTR EMM_INIT   ; Initialize Expanded Memory Manager
-		JC @@ERROR              ; and EMM data. Exit on error
-
-								; On success:
+		JC @@ABORT             	; and EMM data. Exit on error
+		
+		JMP @@MAIN				; On success:
 								; AX = Base Frame
 								; BX = Free pages
 								; DX = Total pages
-		
+
+@@ABORT:
+		JMP  @@NOEMM			; NOEMM is beyond a SHORT jump
+								; ... so we JMP short to @@ABORT
+								; ... then JMP to @NOEMM
+
+@@MAIN:		
 		MOV DS:[EMMBASE], AX    ; Save values
 		MOV DS:[EMMFREE], BX
 		MOV DS:[EMMSIZE], DX
@@ -70,14 +89,67 @@ EMMDEMO	PROC FAR
 		MOV AX, DS:[EMMFREE]    ; Show free pages
 		MOV DX, OFFSET SFREE
 		CALL FAR PTR INFO
-				
+
+		MOV AX, DS:[EMMFREE]	; Check if we have enough memory
+		CMP AX, ALLOC
+		JB	@@LESS
+		
+		MOV AX, ALLOC			; Allocate pages
+		CALL EMM_ALLOC
+		JB @@FAIL
+
+		MOV DS:[EMMHNDL], AX	; Save handle
+		
+		MOV CX, 0AH				; Show number of pages allocated
+		MOV AX, ALLOC
+		MOV DX, OFFSET SALLOC
+		CALL FAR PTR INFO
+
+		CALL @@NEWL
+		MOV DX, OFFSET SOK		; Show allocation success
+		CALL FAR PTR PRINT
+		
+		MOV AX, DS:[EMMHNDL]	; Get handle
+		CALL EMM_FREE			; Free memory
+		JB @@LEAK
+		
+		CALL @@NEWL
+		MOV DX, OFFSET SFREED	; Memory freed
+		CALL FAR PTR PRINT
+		
+@@OK:
 		MOV AX, 4C00H           ; Set exit code to 0
 		JMP @@EXIT
 
-@@ERROR:
+@@NEWL	LABEL NEAR
+		MOV DX, OFFSET SENDL	; start on new line
+		CALL FAR PTR PRINT
+		RETN
+
+@@LESS:
+		CALL @@NEWL
+		MOV DX, OFFSET SLESS	; Not enough expanded memory
+		CALL FAR PTR PRINT
+		JMP @@ERROR
+
+@@FAIL:
+		CALL @@NEWL
+		MOV DX, OFFSET SFAIL	; Expanded memory not allocated
+		CALL FAR PTR PRINT
+		JMP @@ERROR
+
+@@LEAK:
+		CALL @@NEWL
+		MOV DX, OFFSET SLEAK	; Expanded memory not freed
+		CALL FAR PTR PRINT
+		JMP @@ERROR
+		
+@@NOEMM:
+		CALL @@NEWL
 		MOV DX, OFFSET SNONE    ; Expanded memory manager is not available
 		CALL FAR PTR PRINT
-		
+
+@@ERROR:		
 		MOV AX, 4C01H           ; Set exit code to 1
 
 @@EXIT:         

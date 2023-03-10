@@ -383,6 +383,46 @@ EMM_FREE PROC FAR
 
 EMM_FREE ENDP
 
+;------ EMM_MAP -------
+;
+; Maps logical page to
+; Physical page (0-3)
+;
+; Inputs:
+;		AL = Physical page 0-3
+;		BX = Logical page (0FFFFH to unmap)
+;		DX = Handle
+;
+;		On success:
+;		CF is clear
+;
+;		On failure:
+;		CF is set
+
+		PUBLIC EMM_MAP
+
+EMM_MAP	PROC FAR
+
+		PUSH AX					; Save registers
+		PUSH BX
+		PUSH DX
+		PUSHF
+
+		MOV AH, 44H				; Map/Unmap logical page
+		INT 67H					; from physical page
+		
+		MOV AL, AH				; Set CF on error
+		CALL EMM_EXIT
+		
+		POPF
+		POP DX
+		POP BX
+		POP AX
+		
+		RETF
+
+EMM_MAP ENDP
+
 ;------ EMM_EXIT ------
 ;
 ; Sets CF on success/error
