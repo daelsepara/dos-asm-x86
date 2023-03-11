@@ -9,9 +9,7 @@ I am collecting in this repository (hopefully) all my recent experiments with th
 
 - Library for checking availability of expanded memory
 - Testing whether expanded memory manager is working
-- Getting base page frame segment
-- Number of unallocated/free pages
-- Total number of pages
-- TODO: allocate/de-allocate pages
-- TODO: map/unmap pages
+- Getting EMM info: base page frame segment and number of unallocated/free/total pages
+- Allocate/de-allocate pages
+- Map/unmap pages
 - TODO: copy to/from mapped pages
