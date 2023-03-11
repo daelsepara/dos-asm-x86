@@ -26,6 +26,10 @@ SFAIL	DB "Expanded Memory not allocated", NEWLINE
 SFREED	DB "Expanded Memory freed", NEWLINE
 SLEAK	DB "Expanded Memory not freed", NEWLINE
 SLESS	DB "Not enough expanded memory", NEWLINE
+SMAPPED	DB "Page 0 mapped", NEWLINE
+SNOMAP	DB "Page 0 not mapped", NEWLINE
+SUNMAP	DB "Page 0 unmapped", NEWLINE
+SFUNMAP	DB "Page 0 failed to unmap:", NEWLINE
 BUFFER	DB 06H DUP ('0'), "$"
 EMMBASE	DW 0H					; EMM Page Frame Segment
 EMMSIZE	DW 0H           		; Total number of pages in system
@@ -47,7 +51,7 @@ CSEG    SEGMENT PARA PUBLIC 'CODE'
 
 		PUBLIC EMMDEMO
 
-		EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR
+		EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR, EMM_MAP:FAR
 
 EMMDEMO	PROC FAR
 
@@ -109,10 +113,29 @@ EMMDEMO	PROC FAR
 		MOV DX, OFFSET SOK		; Show allocation success
 		CALL FAR PTR PRINT
 		
+		MOV AX, 0				; Physical Page
+		MOV BX, 0				; Logical Page
+		MOV DX, DS:[EMMHNDL]	; Get handle
+		CALL EMM_MAP
+		JB @@NOMAP
+
+		CALL @@NEWL
+		MOV DX, OFFSET SMAPPED	; Page mapped
+		CALL FAR PTR PRINT
+		
+		MOV BX, 0FFFFH			; Unmap
+		MOV DX, DS:[EMMHNDL]	; Get handle
+		CALL EMM_MAP
+		JB @@NOUNMAP
+
+		CALL @@NEWL
+		MOV DX, OFFSET SUNMAP	; Page unmapped
+		CALL FAR PTR PRINT
+		
 		MOV AX, DS:[EMMHNDL]	; Get handle
 		CALL EMM_FREE			; Free memory
 		JB @@LEAK
-		
+				
 		CALL @@NEWL
 		MOV DX, OFFSET SFREED	; Memory freed
 		CALL FAR PTR PRINT
@@ -143,7 +166,19 @@ EMMDEMO	PROC FAR
 		MOV DX, OFFSET SLEAK	; Expanded memory not freed
 		CALL FAR PTR PRINT
 		JMP @@ERROR
-		
+
+@@NOMAP:
+		CALL @@NEWL
+		MOV DX, OFFSET SNOMAP	; Physical page not mapped
+		CALL FAR PTR PRINT
+		JMP @@ERROR
+
+@@NOUNMAP:
+		CALL @@NEWL
+		MOV DX, OFFSET SFUNMAP	; Physical page not unmapped
+		CALL FAR PTR PRINT
+		JMP @@ERROR
+				
 @@NOEMM:
 		CALL @@NEWL
 		MOV DX, OFFSET SNONE    ; Expanded memory manager is not available
