@@ -96,11 +96,11 @@ EMMDEMO	PROC FAR
 
 	MOV AX, DS:[EMMFREE]		; Check if we have enough memory
 	CMP AX, ALLOC
-	JB	@@LESS
+	JC @@LESS
 		
 	MOV AX, ALLOC			; Allocate pages
 	CALL EMM_ALLOC
-	JB @@FAIL
+	JC @@FAIL
 
 	MOV DS:[EMMHNDL], AX		; Save handle
 		
@@ -117,7 +117,7 @@ EMMDEMO	PROC FAR
 	MOV BX, 0			; Logical Page
 	MOV DX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_MAP
-	JB @@NOMAP
+	JC @@NOMAP
 
 	CALL @@NEWL
 	MOV DX, OFFSET SMAPPED		; Page mapped
@@ -126,7 +126,7 @@ EMMDEMO	PROC FAR
 	MOV BX, 0FFFFH			; Unmap
 	MOV DX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_MAP
-	JB @@NOUNMAP
+	JC @@NOUNMAP
 
 	CALL @@NEWL
 	MOV DX, OFFSET SUNMAP		; Page unmapped
@@ -134,7 +134,7 @@ EMMDEMO	PROC FAR
 		
 	MOV AX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_FREE			; Free memory
-	JB @@LEAK
+	JC @@LEAK
 				
 	CALL @@NEWL
 	MOV DX, OFFSET SFREED		; Memory freed
