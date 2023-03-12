@@ -304,15 +304,13 @@ STRLEN	PROC FAR
 
 		CLD						; Search in Forward direction
 
-@@LOOP	LABEL NEAR
-
+@@LOOP:
 		SCASB
 		JZ @@EXIT
 		INC CX					; String length in CX
 		JMP @@LOOP
 
 @@EXIT:
-
 		POPF
 		POP DI
 		POP AX
@@ -324,8 +322,8 @@ STRLEN	ENDP
 
 ;------ PRINT ------
 ;
-; Prints string. Uses DOS's print (00H terminated)
-; string service
+; Prints string. Uses DOS's write
+; to file service
 ;
 ; Inputs:
 ;
@@ -350,7 +348,6 @@ PRINT	PROC FAR
 		INT 21H
 
 @@EXIT:
-		
 		POP CX					; Restore registers
 		POP BX
 		POP AX
