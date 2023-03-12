@@ -11,7 +11,7 @@
 
 DSEG 	SEGMENT PARA PUBLIC 'DATA'
 
-NEWLINE	EQU 0AH, 0DH, "$"		; New line
+NEWLINE	EQU 0AH, 0DH, 00H		; New line
 ALLOC	EQU 0100H				; Number of pages to allocate
 
 SENDL	DB NEWLINE
@@ -30,11 +30,11 @@ SMAPPED	DB "Page 0 mapped", NEWLINE
 SNOMAP	DB "Page 0 not mapped", NEWLINE
 SUNMAP	DB "Page 0 unmapped", NEWLINE
 SFUNMAP	DB "Page 0 failed to unmap:", NEWLINE
-BUFFER	DB 06H DUP ('0'), "$"
-EMMBASE	DW 0H					; EMM Page Frame Segment
-EMMSIZE	DW 0H           		; Total number of pages in system
-EMMFREE	DW 0H					; Number of unallocated pages
-EMMHNDL DW 0H					; Handle
+BUFFER	DB 06H DUP (' '), 00H	; Buffer for number to string conversion
+EMMBASE	DW 0000H				; EMM Page Frame Segment
+EMMSIZE	DW 0000H           		; Total number of pages in system
+EMMFREE	DW 0000H				; Number of unallocated pages
+EMMHNDL DW 0000H				; Handle
 
 DSEG ENDS
 
@@ -209,7 +209,7 @@ CLEAR	PROC FAR
 		PUSH AX
 		PUSH DI
 		
-		XOR AX, AX				; Clear buffer
+		MOV AL, ' '				; Clear buffer
 		CLD
 		REPZ STOSB
 		
@@ -274,14 +274,62 @@ CONVERT	PROC FAR
 
 CONVERT ENDP
 
+;------ STRLEN ------
+;
+; Get string length
+;
+; Inputs:
+;
+;		DS:DX = Offset to string (00H terminated)
+;
+; Outputs:
+;
+;		CX = String Length
+
+		PUBLIC STRLEN
+		
+STRLEN	PROC FAR
+
+		PUSH ES					; Save registers
+		PUSH AX
+		PUSH DI
+		PUSHF
+		
+		MOV AX, DS				; Copy DS:DX into ES:DI
+		MOV ES, AX
+		MOV DI, DX
+		
+		XOR AX, AX				; Scan for end of string (NULL = 00H)
+		XOR CX, CX				; Initialize stringt length
+
+		CLD						; Search in Forward direction
+
+@@LOOP	LABEL NEAR
+
+		SCASB
+		JZ @@EXIT
+		INC CX					; String length in CX
+		JMP @@LOOP
+
+@@EXIT:
+
+		POPF
+		POP DI
+		POP AX
+		POP ES
+		
+		RETF
+
+STRLEN	ENDP
+
 ;------ PRINT ------
 ;
-; Prints string. Uses DOS's print ($-terminated)
+; Prints string. Uses DOS's print (00H terminated)
 ; string service
 ;
 ; Inputs:
 ;
-;		DS:DX = Offset to string ($-terminated)
+;		DS:DX = Offset to string (00H terminated)
 
 		PUBLIC PRINT
 
@@ -289,11 +337,23 @@ PRINT	PROC FAR
 		
 		PUSHF					; Save registers
 		PUSH AX
+		PUSH BX
+		PUSH CX
 		
-		MOV AH, 09H				; Print using DOS service
+		CALL FAR PTR STRLEN		; Get string length into CX
+		
+		OR CX, CX				; Check if there is
+		JZ @@EXIT				; text to print
+		
+		MOV AH, 40H				; Print using DOS service
+		MOV BX, 0001H			; Print to STDOUT
 		INT 21H
+
+@@EXIT:
 		
-		POP AX					; Restore registers
+		POP CX					; Restore registers
+		POP BX
+		POP AX
 		POPF
 		
 		RET

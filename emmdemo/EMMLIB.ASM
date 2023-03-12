@@ -37,7 +37,7 @@ EMM_INIT PROC FAR
 		MOV AX, EMMDSEG			; Point to EMMLIB data
 		MOV DS, AX 
 		
-		CALL EMM_CHECK			; Check if Expanded Memory Manager is present
+		CALL EMM_TEST			; Check if Expanded Memory Manager is present
 		JC @@ERROR
 		
 		CALL EMM_OK             ; Check if Expanded Memory Manager is working
