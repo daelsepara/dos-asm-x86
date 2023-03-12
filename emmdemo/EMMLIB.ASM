@@ -6,9 +6,10 @@
 
 EMMDSEG SEGMENT PARA PUBLIC 'DATA'
 EMMNAME	DB "EMMXXXX0", 00H		; Expanded Memory Manager Driver Name
-EMMBASE	DW 0H					; EMM Page Frame Segment
-EMMSIZE	DW 0H                   ; Total number of pages in system
-EMMFREE	DW 0H                   ; Number of unallocated pages
+EMMBASE	DW 0000H				; EMM Page Frame Segment
+EMMSIZE	DW 0000H				; Total number of pages in system
+EMMFREE	DW 0000H                ; Number of unallocated pages
+EMMCODE DB 00H					; Exit code
 EMMDSEG ENDS
 
 EMMCSEG SEGMENT PARA PUBLIC 'CODE'
@@ -30,8 +31,11 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 		PUBLIC EMM_INIT
 
 EMM_INIT PROC FAR
-
+		PUSH DS
 		PUSHF                   ; Save FLAGS
+		
+		MOV AX, EMMDSEG			; Point to EMMLIB data
+		MOV DS, AX 
 		
 		CALL EMM_CHECK			; Check if Expanded Memory Manager is present
 		JC @@ERROR
@@ -40,15 +44,26 @@ EMM_INIT PROC FAR
 		JC @@ERROR
 
 		CALL EMM_INFO			; Get info
+		JC @@ERROR
+		
+		PUSH AX
+		XOR AL, 00H
+		MOV DS:[EMMCODE], AL
+		POP AX
+		
 		JMP @@EXIT
 		
 @@ERROR:
+		PUSH AX
 		MOV AL, 01H
+		MOV DS:[EMMCODE], AL
+		POP AX
+		
 		CALL EMM_EXIT           ; Set CF flag
 		
 @@EXIT:
 		POPF					; Restore FLAGS
-		
+		POP DS
 		RET
 		
 EMM_INIT ENDP
@@ -141,19 +156,24 @@ EMM_TEST PROC FAR
 		JNZ @@TEST0001
 		
 		XOR AL, AL              ; Set return code to 0
+		MOV DS:[EMMCODE], AL
 		JMP @@TEST0002
 		
 @@TEST0001:
 		MOV AL, 01H             ; Set return code to 1
-
+		MOV DS:[EMMCODE], AL
+		
 @@TEST0002:
 		MOV AH, 3EH             ; Close file handle
 		INT 21H
+
+		JC @@TEST0003			; Jump on error
 		JMP @@TEST0004
 
 @@TEST0003:
 		MOV AL, 01H             ; Set return code = 1, no EMM present
-
+		MOV DS:[EMMCODE], AL
+		
 @@TEST0004:
 
 		CALL EMM_EXIT           ; Set CF Flag
@@ -176,18 +196,23 @@ EMM_TEST ENDP
 
 EMM_OK	PROC FAR
 		
+		PUSH DS					; Push DS
 		PUSH AX					; Save AX
 		PUSHF                   ; Save flags
 
+		MOV AX, EMMDSEG			; Point DS to EMM Data
+		MOV DS, AX
+		
 		MOV AH, 40H             ; Get Expanded Memory Manager Status
 		INT 67H
 
-		MOV AL, AH              ; Copy result code in AH
+		MOV DS:[EMMCODE], AH	; Copy result code in AH
+		
 		CALL EMM_EXIT           ; Set CF Flag
-		
 		POPF
+
 		POP AX					; Restore AX
-		
+		POP DS					; Restore DS
 		RET
 
 EMM_OK  ENDP
@@ -250,11 +275,14 @@ EMM_INFO PROC FAR
 		MOV [EMMFREE], BX       ; Set total number of unallocated pages
 		
 		XOR AL, AL              ; No error
+		MOV DS:[EMMCODE], AL
+		
 		JMP @@EXIT1
 
 @@ERROR:
 		MOV AL, 01H
-
+		MOV DS:[EMMCODE], AL
+		
 @@EXIT1:
 		CALL EMM_EXIT           ; Set CF flag
 		POPF
@@ -299,9 +327,15 @@ EMM_INFO ENDP
 		
 EMM_ALLOC PROC FAR
 		
-		PUSH BX					; Save registers
+		PUSH DS					; Save registers
+		PUSH BX					
 		PUSH DX
 		PUSHF
+		
+		PUSH AX					; Point to EMM Data
+		MOV AX, EMMDSEG
+		MOV DS, AX
+		POP AX
 		
 		CALL EMM_OK
 		JC @@ERROR
@@ -314,10 +348,13 @@ EMM_ALLOC PROC FAR
 		JNZ @@ERROR
 		
 		XOR AL, AL
+		MOV DS:[EMMCODE], AL
+		
 		JMP @@EXIT1
 
 @@ERROR:
 		MOV AL, 01H
+		MOV DS:[EMMCODE], AL
 
 @@EXIT1:
 		CALL EMM_EXIT			; Set CF flag
@@ -332,6 +369,7 @@ EMM_ALLOC PROC FAR
 @@EXIT4:
 		POP DX					; Restore registers
 		POP BX
+		POP DS
 		
 		RET
 
@@ -355,9 +393,15 @@ EMM_ALLOC ENDP
 
 EMM_FREE PROC FAR
 
-		PUSH AX					; Save registers
+		PUSH DS					; Save registers
+		PUSH AX
 		PUSH DX
 		PUSHF
+		
+		PUSH AX					; Point to EMM Data
+		MOV AX, EMMDSEG
+		MOV DS, AX
+		POP AX
 		
 		MOV DX, AX				; De-allocate handle
 		MOV AH, 45H				; ... and memory
@@ -367,17 +411,21 @@ EMM_FREE PROC FAR
 		JNZ @@ERROR				; failed
 		
 		XOR AL, AL
+		
 		JMP @@EXIT
 
 @@ERROR:
 		MOV AL, 01H
-
+		
 @@EXIT:
+		MOV DS:[EMMCODE], AL
+		
 		CALL EMM_EXIT			; Set CF flag
 
 		POPF					; Restore registers
 		POP DX
 		POP AX
+		POP DS
 		
 		RET
 
@@ -403,21 +451,28 @@ EMM_FREE ENDP
 
 EMM_MAP	PROC FAR
 
-		PUSH AX					; Save registers
+		PUSH DS					; Save registers
+		PUSH AX
 		PUSH BX
 		PUSH DX
 		PUSHF
+		
+		PUSH AX					; Point to EMM Data
+		MOV AX, EMMDSEG
+		MOV DS, AX
+		POP AX
 
 		MOV AH, 44H				; Map/Unmap logical page
 		INT 67H					; from physical page
 		
-		MOV AL, AH				; Set CF on error
+		MOV DS:[EMMCODE], AH	; Set CF on error
 		CALL EMM_EXIT
 		
 		POPF
 		POP DX
 		POP BX
 		POP AX
+		POP DS
 		
 		RETF
 
@@ -429,7 +484,7 @@ EMM_MAP ENDP
 ;
 ; 1. Assumes that flags are immediately
 ;    next to the FAR return address (below)
-; 2. Assumes AL contains the error code
+; 2. Assumes [EMMCODE] contains the error code
 ; 3. Non-zero error code sets CF, is cleared otherwise
 ; 4. Updates FLAGS on stack (CF)
 
@@ -437,9 +492,10 @@ EMM_MAP ENDP
 
 EMM_EXIT PROC FAR
 
-FLG_OFF	EQU 0AH					; Offset in stack where FLAGS are stored
+FLG_OFF	EQU 0CH					; Offset in stack where FLAGS are stored
 		
-		PUSH AX					; Save registers
+		PUSH DS					; Save registers
+		PUSH AX
 		PUSH BX
 		PUSH BP
 		
@@ -448,11 +504,16 @@ FLG_OFF	EQU 0AH					; Offset in stack where FLAGS are stored
 		PUSH BX					; ... push a copy of the flags
 								; ... in BX to STACK
 		
+		MOV AX, EMMDSEG
+		MOV DS, AX
+		MOV AL, DS:[EMMCODE]
+		
 		OR AL, AL				; Check error code
 		JNZ @@EXIT01
 
 		POPF                    ; Copy BX from stack to FLAGS
 		CLC						; Clear CF because of success
+		
 		JMP @@EXIT02
 
 @@EXIT01:
@@ -468,6 +529,7 @@ FLG_OFF	EQU 0AH					; Offset in stack where FLAGS are stored
 		POP BP					; Restore registers
 		POP BX
 		POP AX
+		POP DS
 		
 		RET
 
