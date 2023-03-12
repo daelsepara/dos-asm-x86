@@ -380,18 +380,22 @@ CPRINT	PROC FAR
 		PUSH DI
 
 		PUSH AX					; Save number in stack
-		MOV AX, DSEG
-		MOV DS, AX				; Point DS:DX to buffer
+
+		MOV AX, DSEG			; Point DS:DX to buffer
+		MOV DS, AX
 		MOV DX, OFFSET BUFFER
-		MOV ES, AX				
-		MOV DI, DX				; Point ES:DI to start of buffer
+		MOV ES, AX				; Point ES:DI to start of buffer
+		MOV DI, DX				
 		
-		PUSH CX					; Clear buffer (6 characters)
-		MOV CX, 06H
+		PUSH CX					; Save base number in stack
+
+		MOV CX, 06H				; Clear buffer (6 characters)
 		CALL FAR PTR CLEAR
-		
+
 		POP CX					; Restore base number in CX
+		
 		ADD DI, 05H				; Point ES:DI to end of buffer
+		
 		POP AX					; Restore number in AX
 		
 		CALL FAR PTR CONVERT	; Do conversion
