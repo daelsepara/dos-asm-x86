@@ -49,20 +49,18 @@ EMM_INIT PROC FAR
 		
 	PUSH AX
 	XOR AL, AL
-	MOV DS:[EMMCODE], AL
-	POP AX
-		
 	JMP @@EXIT
 		
 @@ERROR:
 	PUSH AX
 	MOV AL, 01H
+
+@@EXIT:	
 	MOV DS:[EMMCODE], AL
 	POP AX
-		
+
 	CALL EMM_EXIT           	; Set CF flag
 		
-@@EXIT:
 	POPF				; Restore FLAGS
 	POP DS
 	RET
@@ -108,6 +106,7 @@ EMM_CHECK PROC FAR
 	MOV AL, 01H             	; Set error code = 1, EMM driver not present
 
 @@CHECK0002:
+	MOV DS:[EMMCODE], AL
 	CALL EMM_EXIT           	; Set CF flag
 		
 	POPF				; Restore registers
@@ -156,14 +155,13 @@ EMM_TEST PROC FAR
 	JNZ @@TEST0001
 		
 	XOR AL, AL			; Set return code to 0
-	MOV DS:[EMMCODE], AL
 	JMP @@TEST0002
 		
 @@TEST0001:
 	MOV AL, 01H             	; Set return code to 1
-	MOV DS:[EMMCODE], AL
 		
 @@TEST0002:
+	MOV DS:[EMMCODE], AL
 	MOV AH, 3EH             	; Close file handle
 	INT 21H
 
@@ -257,34 +255,12 @@ EMM_INFO PROC FAR
 		
 	XOR AL, AL			; No error
 	JMP @@EXIT1
-	
-	MOV AH, 41H			; Get Page Frame Segment
-	INT 67H
-		
-	OR AH, AH
-	JNZ @@ERROR
-		
-	MOV [EMMBASE], BX		; Set EMM Page Frame Segment
-		
-	MOV AH, 42H             	; Get Page Counts
-	INT 67H
-		
-	OR AH, AH
-	JNZ @@ERROR
-		
-	MOV [EMMSIZE], DX       	; Set total number of pages
-	MOV [EMMFREE], BX       	; Set total number of unallocated pages
-		
-	XOR AL, AL			; No error
-	MOV DS:[EMMCODE], AL
-		
-	JMP @@EXIT1
 
 @@ERROR:
 	MOV AL, 01H
-	MOV DS:[EMMCODE], AL
 		
 @@EXIT1:
+	MOV DS:[EMMCODE], AL
 	CALL EMM_EXIT           	; Set CF flag
 	POPF
 	JC @@EXIT2			; Exit on error
@@ -349,15 +325,13 @@ EMM_ALLOC PROC FAR
 	JNZ @@ERROR
 	
 	XOR AL, AL
-	MOV DS:[EMMCODE], AL
-		
 	JMP @@EXIT1
 
 @@ERROR:
 	MOV AL, 01H
-	MOV DS:[EMMCODE], AL
 
 @@EXIT1:
+	MOV DS:[EMMCODE], AL
 	CALL EMM_EXIT			; Set CF flag
 	POPF
 	JC @@EXIT3
@@ -418,7 +392,6 @@ EMM_FREE PROC FAR
 		
 @@EXIT:
 	MOV DS:[EMMCODE], AL
-		
 	CALL EMM_EXIT			; Set CF flag
 
 	POPF				; Restore registers
