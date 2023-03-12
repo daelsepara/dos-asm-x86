@@ -5,7 +5,7 @@
 		TITLE EMMLIB
 
 EMMDSEG SEGMENT PARA PUBLIC 'DATA'
-EMMNAME	DB "EMMXXXX0$"			; Expanded Memory Manager Driver Name
+EMMNAME	DB "EMMXXXX0", 00H		; Expanded Memory Manager Driver Name
 EMMBASE	DW 0H					; EMM Page Frame Segment
 EMMSIZE	DW 0H                   ; Total number of pages in system
 EMMFREE	DW 0H                   ; Number of unallocated pages
