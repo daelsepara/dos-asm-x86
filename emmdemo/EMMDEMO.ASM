@@ -300,7 +300,7 @@ STRLEN	PROC FAR
 	MOV DI, DX
 		
 	XOR AX, AX			; Scan for end of string (NULL = 00H)
-	XOR CX, CX			; Initialize stringt length
+	XOR CX, CX			; Initialize string length
 
 	CLD				; Search in Forward direction
 
