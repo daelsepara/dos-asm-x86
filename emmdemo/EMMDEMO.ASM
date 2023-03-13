@@ -230,7 +230,7 @@ CLEAR	ENDP
 ;
 ; Inputs:
 ;	AX = Number
-;       CX = Base
+;	CX = Base
 ;	ES:DI = Pointer to end of buffer
 
 	PUBLIC CONVERT
