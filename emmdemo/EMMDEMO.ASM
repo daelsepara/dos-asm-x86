@@ -36,9 +36,10 @@ EMMBASE	DW 0000H			; EMM Page Frame Segment
 EMMSIZE	DW 0000H           		; Total number of pages in system
 EMMFREE	DW 0000H			; Number of unallocated pages
 EMMHNDL DW 0000H			; Handle
-TESTSTR DB "EMMDEMOX"		; Test string
-EMMTEST DB "         read from page 0", NEWLINE
-NULLSTR	DB 08H DUP (00H)
+TESTSTR DB "EMMDEMOX"			; Test string to copy to expanded memory page
+EMMTEST DB "         read from page 0"	; Buffer string for bytes copied from
+	DB NEWLINE			; expanded memory page 0
+NULLSTR	DB 08H DUP (00H)		; 8 NULL bytes used to clear expanded memory page 0
 
 DSEG ENDS
 
@@ -52,6 +53,8 @@ CSEG    SEGMENT PARA PUBLIC 'CODE'
 ; Expanded memory
 ;
 ; Uses EMMLIB
+;
+; 14/03/2023 Lots of JC/JMP to circumvent immediate/short jump limit
 
 	PUBLIC EMMDEMO
 
@@ -63,7 +66,7 @@ EMMDEMO	PROC FAR
 	MOV DS, AX
 		
 	CALL FAR PTR EMM_INIT   	; Initialize Expanded Memory Manager
-	JC @@ABRT00             		; and EMM data. Exit on error
+	JC @@ABRT00            		; and EMM data. Exit on error
 		
 	JMP @@MAIN00			; On success:
 					; AX = Base Frame
@@ -130,7 +133,7 @@ EMMDEMO	PROC FAR
 	XOR AX, AX			; Physical Page
 	XOR BX, BX			; Logical Page
 	MOV DX, DS:[EMMHNDL]		; Get handle
-	CALL EMM_MAP
+	CALL EMM_MAP			; Map logical page 0 to physical page 0
 	JC @@ABRT03
 	JMP @@MAIN03
 	
@@ -139,16 +142,17 @@ EMMDEMO	PROC FAR
 
 @@MAIN03:	
 	CALL @@NEWL
-	MOV DX, OFFSET SMAPPED		; Page mapped
+	MOV DX, OFFSET SMAPPED		; Logical page 0 was mapped to physical Page 0
 	CALL FAR PTR PRINT
 
 @@ABRT04:
 @@MAIN04:
-	MOV DX, OFFSET NULLSTR		; Clear Page
-	MOV AX, 0
-	MOV CX, 8
-	CALL FAR PTR EMM_MOVE
-	JC @@ABRT05
+	MOV DX, OFFSET NULLSTR		; Clears first 8 bytes of page 0
+	XOR AX, AX			; Physical Page 0 (destination page)
+	MOV CX, 8			; Copy 8 bytes
+	CALL FAR PTR EMM_MOVE		; Copies data from conventional memory
+	JC @@ABRT05			; ... to expanded memory
+					; ... one page at a time
 	
 	MOV DX, OFFSET TESTSTR		; Copy test string to page 0
 	CALL FAR PTR EMM_MOVE
@@ -156,26 +160,27 @@ EMMDEMO	PROC FAR
 	JMP @@MAIN05
 	
 @@ABRT05:
-	JMP @@INIT
+	JMP @@INIT			; EMM Library was not initialized
 
 @@MAIN05:
 	MOV DX, OFFSET EMMTEST		; Copy 8 bytes from page 0
-	MOV AX, 0
-	MOV CX, 8
-	CALL FAR PTR EMM_COPY
-	JC @@ABRT06
-	JMP @@MAIN06
+	XOR AX, AX			; Physical Page 0 (source page)
+	MOV CX, 8			; Copy 8 bytes
+	CALL FAR PTR EMM_COPY		; Copies data from expanded memory
+	JC @@ABRT06			; ... back to conventional memory
+	JMP @@MAIN06			; ... one page at a time
 	
 @@ABRT06:
-	JMP @@INIT
+	JMP @@INIT			; EMM Library was not initialized
 	
 @@MAIN06:
-	PUSH DX
+	PUSH DX				; Print data copied from page (EMMTEST)
 	CALL @@NEWL
 	POP DX
-	CALL FAR PTR PRINT		; Print data copied from page
+	CALL FAR PTR PRINT		
 	
-	MOV BX, 0FFFFH			; Unmap
+	MOV BX, 0FFFFH			; Unmap Page 0
+	MOX AX, 0
 	MOV DX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_MAP
 	JC @@ABRT07
@@ -187,11 +192,11 @@ EMMDEMO	PROC FAR
 @@MAIN07:
 	
 	CALL @@NEWL
-	MOV DX, OFFSET SUNMAP		; Page unmapped
+	MOV DX, OFFSET SUNMAP		; Page 0 was unmapped
 	CALL FAR PTR PRINT
 		
 	MOV AX, DS:[EMMHNDL]		; Get handle
-	CALL EMM_FREE			; Free memory
+	CALL EMM_FREE			; Free allocated expanded memory
 	JC @@ABRT08
 	JMP @@MAIN08
 
@@ -201,7 +206,7 @@ EMMDEMO	PROC FAR
 @@MAIN08:
 				
 	CALL @@NEWL
-	MOV DX, OFFSET SFREED		; Memory freed
+	MOV DX, OFFSET SFREED		; Expanded memory was freed
 	CALL FAR PTR PRINT
 		
 @@OK:
@@ -210,7 +215,7 @@ EMMDEMO	PROC FAR
 
 @@NEWL	LABEL NEAR
 
-	MOV DX, OFFSET SENDL		; start on new line
+	MOV DX, OFFSET SENDL		; Prints a newline character
 	CALL FAR PTR PRINT
 	RETN
 
@@ -222,7 +227,7 @@ EMMDEMO	PROC FAR
 
 @@FAIL:
 	CALL @@NEWL
-	MOV DX, OFFSET SFAIL		; Expanded memory not allocated
+	MOV DX, OFFSET SFAIL		; Expanded memory was not allocated
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
@@ -235,20 +240,20 @@ EMMDEMO	PROC FAR
 
 @@INIT:
 	CALL @@NEWL
-	MOV DX, OFFSET SINIT		; EMMLIB not initialized
+	MOV DX, OFFSET SINIT		; EMM library not initialized
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
 
 @@LEAK:
 	CALL @@NEWL
-	MOV DX, OFFSET SLEAK		; Expanded memory not freed
+	MOV DX, OFFSET SLEAK		; Expanded memory was not freed
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
 @@NOUNMAP:
 	CALL @@NEWL
-	MOV DX, OFFSET SFUNMAP		; Physical page not unmapped
+	MOV DX, OFFSET SFUNMAP		; Physical page was not unmapped
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 				
