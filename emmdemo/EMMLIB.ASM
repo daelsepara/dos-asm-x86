@@ -479,33 +479,36 @@ EMM_MOVE PROC FAR
 	MOV ES, BX
 	MOV BX, ES:[EMMBASE]
 
-	OR BX, BX				; Check if EMM Library
-	JZ @@ERROR				; was initialized
+	OR BX, BX			; Check if EMM Library
+	JZ @@ERROR			; was initialized
 
 	CMP AX, 0003H			; Check if AX is out of bounds
 	JA @@ERROR
 	
-	OR CX, CX				; Check if there are
-	JZ @@DONE				; bytes to copy
+	OR CX, CX			; Check if there are
+	JZ @@DONE			; bytes to copy
 	
-	MOV SI, DX				; Setup source
+	MOV SI, DX			; Setup source
 	
-	MOV ES, BX				; Point to EMM Base Page Frame
-	MOV DI, 4000H			; Setup correct offset in destination page
-	MUL DI
+	MOV ES, BX			; Point to EMM Base Page Frame
+	MOV DI, 4000H			; Setup destination:
+	MUL DI				; Base Frame Segment:[Physical Page * 16384]
 	MOV DI, AX
 	
-	REPZ MOVSB				; Do copy
+	REPZ MOVSB			; Copy data to the physical page (expanded memory)
+					; ... This physical page is the portion of
+					; ...  expanded memory that is currently mapped
+					; ... to the physical page
 
 @@DONE:
 	
-	XOR AL, AL				; No errors
+	XOR AL, AL			; No errors
 
 	JMP @@EXIT
 	
 @@ERROR:
 	
-	MOV AL, 01H				; Error
+	MOV AL, 01H			; Error
 
 @@EXIT:
 	MOV BX, EMMDSEG			; Setup exit code
@@ -530,7 +533,8 @@ EMM_MOVE ENDP
 ;------ EMM_COPY -------
 ;
 ; Copies data from mapped page
-; Into destination buffer
+; into destination buffer in
+; conventional memory
 ;
 ; Initialized with EMM_INIT
 ;
@@ -557,37 +561,39 @@ EMM_COPY PROC FAR
 	MOV ES, BX
 	MOV BX, ES:[EMMBASE]
 
-	OR BX, BX				; Check if EMM Library
-	JZ @@ERROR				; was initialized
+	OR BX, BX			; Check if EMM Library
+	JZ @@ERROR			; was initialized
 
 	CMP AX, 0003H			; Check if AX is out of bounds
 	JA @@ERROR
 	
-	OR CX, CX				; Check if there are
-	JZ @@DONE				; bytes to copy
+	OR CX, CX			; Check if there are
+	JZ @@DONE			; bytes to copy
 
-	PUSH BX					; Save base page frame segment
+	PUSH BX				; Save base page frame segment
 	MOV BX, DS
-	MOV ES, BX				; Setup destination
-	MOV DI, DX				; DS:DX -> ES:DI 
+	MOV ES, BX			; Setup destination
+	MOV DI, DX			; DS:DX -> ES:DI 
 	POP BX
 
-	MOV DS, BX				; Point DS to EMM Base Page Frame Segment
-	MOV SI, 4000H			; Setup correct offset in source page
-	MUL SI					; [Page Frame Segment]:[Page] - > DS:SI
+	MOV DS, BX			; Point DS to EMM Base Page Frame Segment
+	MOV SI, 4000H			; Setup Source:
+	MUL SI				; Base Frame Segment:[Physical Page * 16384]
 	MOV SI, AX
 	
-	REPZ MOVSB				; Copy
-
+	REPZ MOVSB			; Copy data from physical page to destination buffer
+					; ... This physical page is the portion of 
+					; ... expanded memory that is currently mapped
+					; ... to the physical page
 @@DONE:
 	
-	XOR AL, AL				; No errors
+	XOR AL, AL			; No errors
 
 	JMP @@EXIT
 	
 @@ERROR:
 	
-	MOV AL, 01H				; Error
+	MOV AL, 01H			; Error
 
 @@EXIT:
 	MOV BX, EMMDSEG			; Setup exit code
