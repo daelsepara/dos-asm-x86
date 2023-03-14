@@ -1,4 +1,4 @@
-; Expanded Memory Manager Library
+; Expanded Memory Library
 		
 	LOCALS @@
 		
@@ -449,6 +449,166 @@ EMM_MAP	PROC FAR
 	RETF
 
 EMM_MAP ENDP
+
+;------ EMM_MOVE -------
+;
+; Copies data into mapped page
+; Assumes Expanded Memory Library
+;
+; Initialized with EMM_INIT
+;
+; Inputs:
+;	DS:DX = Buffer
+;	AX = Physical Page number
+;	CX = Number of Bytes to copy 
+
+	PUBLIC EMM_MOVE
+
+EMM_MOVE PROC FAR
+	
+	PUSH ES
+	PUSH AX
+	PUSH BX
+	PUSH CX
+	PUSH DX
+	PUSH SI
+	PUSH DI
+	PUSHF
+
+	MOV BX, EMMDSEG
+	MOV ES, BX
+	MOV BX, ES:[EMMBASE]
+
+	OR BX, BX				; Check if EMM Library
+	JZ @@ERROR				; was initialized
+
+	CMP AX, 0003H			; Check if AX is out of bounds
+	JA @@ERROR
+	
+	OR CX, CX				; Check if there are
+	JZ @@DONE				; bytes to copy
+	
+	MOV SI, DX				; Setup source
+	
+	MOV ES, BX				; Point to EMM Base Page Frame
+	MOV DI, 4000H			; Setup correct offset in destination page
+	MUL DI
+	MOV DI, AX
+	
+	REPZ MOVSB				; Do copy
+
+@@DONE:
+	
+	XOR AL, AL				; No errors
+
+	JMP @@EXIT
+	
+@@ERROR:
+	
+	MOV AL, 01H				; Error
+
+@@EXIT:
+	MOV BX, EMMDSEG			; Setup exit code
+	MOV ES, BX
+	MOV ES:[EMMCODE], AL
+	
+	CALL EMM_EXIT			; Set CF flag
+
+	POPF
+	POP DI
+	POP SI
+	POP DX
+	POP CX
+	POP BX
+	POP AX
+	POP ES
+	
+	RETF
+	
+EMM_MOVE ENDP
+
+;------ EMM_COPY -------
+;
+; Copies data from mapped page
+; Into destination buffer
+;
+; Initialized with EMM_INIT
+;
+; Inputs:
+;	DS:DX = Buffer
+;	AX = Physical Page number
+;	CX = Number of Bytes to copy 
+
+	PUBLIC EMM_COPY
+
+EMM_COPY PROC FAR
+	
+	PUSH DS
+	PUSH ES
+	PUSH AX
+	PUSH BX
+	PUSH CX
+	PUSH DX
+	PUSH SI
+	PUSH DI
+	PUSHF
+
+	MOV BX, EMMDSEG
+	MOV ES, BX
+	MOV BX, ES:[EMMBASE]
+
+	OR BX, BX				; Check if EMM Library
+	JZ @@ERROR				; was initialized
+
+	CMP AX, 0003H			; Check if AX is out of bounds
+	JA @@ERROR
+	
+	OR CX, CX				; Check if there are
+	JZ @@DONE				; bytes to copy
+
+	PUSH BX					; Save base page frame segment
+	MOV BX, DS
+	MOV ES, BX				; Setup destination
+	MOV DI, DX				; DS:DX -> ES:DI 
+	POP BX
+
+	MOV DS, BX				; Point DS to EMM Base Page Frame Segment
+	MOV SI, 4000H			; Setup correct offset in source page
+	MUL SI					; [Page Frame Segment]:[Page] - > DS:SI
+	MOV SI, AX
+	
+	REPZ MOVSB				; Copy
+
+@@DONE:
+	
+	XOR AL, AL				; No errors
+
+	JMP @@EXIT
+	
+@@ERROR:
+	
+	MOV AL, 01H				; Error
+
+@@EXIT:
+	MOV BX, EMMDSEG			; Setup exit code
+	MOV ES, BX
+	MOV ES:[EMMCODE], AL
+	
+	CALL EMM_EXIT			; Set CF flag
+
+	POPF
+	POP DI
+	POP SI
+	POP DX
+	POP CX
+	POP BX
+	POP AX
+	POP ES
+	POP DS
+	
+	RETF
+	
+EMM_COPY ENDP
 
 ;------ EMM_EXIT ------
 ;

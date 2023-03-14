@@ -26,6 +26,7 @@ SFAIL	DB "Expanded Memory not allocated", NEWLINE
 SFREED	DB "Expanded Memory freed", NEWLINE
 SLEAK	DB "Expanded Memory not freed", NEWLINE
 SLESS	DB "Not enough expanded memory", NEWLINE
+SINIT	DB "Expanded Memory Library not initialized", NEWLINE
 SMAPPED	DB "Page 0 mapped", NEWLINE
 SNOMAP	DB "Page 0 not mapped", NEWLINE
 SUNMAP	DB "Page 0 unmapped", NEWLINE
@@ -35,6 +36,9 @@ EMMBASE	DW 0000H			; EMM Page Frame Segment
 EMMSIZE	DW 0000H           		; Total number of pages in system
 EMMFREE	DW 0000H			; Number of unallocated pages
 EMMHNDL DW 0000H			; Handle
+TESTSTR DB "EMMDEMOX"		; Test string
+EMMTEST DB "         read from page 0", NEWLINE
+NULLSTR	DB 08H DUP (00H)
 
 DSEG ENDS
 
@@ -51,7 +55,7 @@ CSEG    SEGMENT PARA PUBLIC 'CODE'
 
 	PUBLIC EMMDEMO
 
-	EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR, EMM_MAP:FAR
+	EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR, EMM_MAP:FAR, EMM_MOVE:FAR, EMM_COPY:FAR
 
 EMMDEMO	PROC FAR
 
@@ -59,19 +63,19 @@ EMMDEMO	PROC FAR
 	MOV DS, AX
 		
 	CALL FAR PTR EMM_INIT   	; Initialize Expanded Memory Manager
-	JC @@ABORT             		; and EMM data. Exit on error
+	JC @@ABRT00             		; and EMM data. Exit on error
 		
-	JMP @@MAIN			; On success:
+	JMP @@MAIN00			; On success:
 					; AX = Base Frame
 					; BX = Free pages
 					; DX = Total pages
 
-@@ABORT:
+@@ABRT00:
 	JMP  @@NOEMM			; NOEMM is beyond a SHORT jump
 					; ... so we JMP short to @@ABORT
 					; ... then JMP to @NOEMM
 
-@@MAIN:		
+@@MAIN00:		
 	MOV DS:[EMMBASE], AX    	; Save values
 	MOV DS:[EMMFREE], BX
 	MOV DS:[EMMSIZE], DX
@@ -96,12 +100,22 @@ EMMDEMO	PROC FAR
 
 	MOV AX, DS:[EMMFREE]		; Check if we have enough memory
 	CMP AX, ALLOC
-	JC @@LESS
-		
+	JC @@ABRT01
+	JMP @@MAIN01
+
+@@ABRT01:
+	JMP @@LESS
+	
+@@MAIN01:		
 	MOV AX, ALLOC			; Allocate pages
 	CALL EMM_ALLOC
-	JC @@FAIL
+	JC @@ABRT02
+	JMP @@MAIN02
+	
+@@ABRT02:
+	JMP @@FAIL
 
+@@MAIN02:
 	MOV DS:[EMMHNDL], AX		; Save handle
 		
 	MOV CX, 0AH			; Show number of pages allocated
@@ -113,28 +127,78 @@ EMMDEMO	PROC FAR
 	MOV DX, OFFSET SOK		; Show allocation success
 	CALL FAR PTR PRINT
 		
-	MOV AX, 0			; Physical Page
-	MOV BX, 0			; Logical Page
+	XOR AX, AX			; Physical Page
+	XOR BX, BX			; Logical Page
 	MOV DX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_MAP
-	JC @@NOMAP
+	JC @@ABRT03
+	JMP @@MAIN03
+	
+@@ABRT03:
+	JMP @@NOMAP
 
+@@MAIN03:	
 	CALL @@NEWL
 	MOV DX, OFFSET SMAPPED		; Page mapped
 	CALL FAR PTR PRINT
-		
+
+@@ABRT04:
+@@MAIN04:
+	MOV DX, OFFSET NULLSTR		; Clear Page
+	MOV AX, 0
+	MOV CX, 8
+	CALL FAR PTR EMM_MOVE
+	JC @@ABRT05
+	
+	MOV DX, OFFSET TESTSTR		; Copy test string to page 0
+	CALL FAR PTR EMM_MOVE
+	JC @@ABRT05
+	JMP @@MAIN05
+	
+@@ABRT05:
+	JMP @@INIT
+
+@@MAIN05:
+	MOV DX, OFFSET EMMTEST		; Copy 8 bytes from page 0
+	MOV AX, 0
+	MOV CX, 8
+	CALL FAR PTR EMM_COPY
+	JC @@ABRT06
+	JMP @@MAIN06
+	
+@@ABRT06:
+	JMP @@INIT
+	
+@@MAIN06:
+	PUSH DX
+	CALL @@NEWL
+	POP DX
+	CALL FAR PTR PRINT		; Print data copied from page
+	
 	MOV BX, 0FFFFH			; Unmap
 	MOV DX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_MAP
-	JC @@NOUNMAP
-
+	JC @@ABRT07
+	JMP @@MAIN07
+	
+@@ABRT07:
+	JMP @@NOUNMAP
+	
+@@MAIN07:
+	
 	CALL @@NEWL
 	MOV DX, OFFSET SUNMAP		; Page unmapped
 	CALL FAR PTR PRINT
 		
 	MOV AX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_FREE			; Free memory
-	JC @@LEAK
+	JC @@ABRT08
+	JMP @@MAIN08
+
+@@ABRT08:
+	JMP @@LEAK
+	
+@@MAIN08:
 				
 	CALL @@NEWL
 	MOV DX, OFFSET SFREED		; Memory freed
@@ -162,15 +226,23 @@ EMMDEMO	PROC FAR
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
-@@LEAK:
-	CALL @@NEWL
-	MOV DX, OFFSET SLEAK		; Expanded memory not freed
-	CALL FAR PTR PRINT
-	JMP @@ERROR
-
 @@NOMAP:
 	CALL @@NEWL
 	MOV DX, OFFSET SNOMAP		; Physical page not mapped
+	CALL FAR PTR PRINT
+	JMP @@ERROR
+
+
+@@INIT:
+	CALL @@NEWL
+	MOV DX, OFFSET SINIT		; EMMLIB not initialized
+	CALL FAR PTR PRINT
+	JMP @@ERROR
+
+
+@@LEAK:
+	CALL @@NEWL
+	MOV DX, OFFSET SLEAK		; Expanded memory not freed
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
