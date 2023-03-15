@@ -12,4 +12,4 @@ I am collecting in this repository (hopefully) all my recent experiments with th
 - Getting EMM info: base page frame segment and number of unallocated/free/total pages
 - Allocate/de-allocate pages
 - Map/unmap pages
-- TODO: copy to/from mapped pages
+- Copy to/from mapped pages
