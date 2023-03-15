@@ -113,9 +113,6 @@ EMM_INIT ENDP
 
 EMM_TEST PROC FAR
 
-	PUSH BP
-	MOV BP, SP
-
 	PUSHF					; Save Flag
 	
 	PUSH DS					; Save Registers
@@ -192,8 +189,6 @@ EMM_TEST PROC FAR
 
 @@EXIT:
 
-	POP BP					; Balance the stack
-
 	RET
 		
 EMM_TEST ENDP
@@ -205,9 +200,6 @@ EMM_TEST ENDP
 	PUBLIC EMM_OK
 
 EMM_OK	PROC FAR
-
-	PUSH BP
-	MOV BP, SP
 
 	PUSHF					; Save registers
 	PUSH DS
@@ -256,8 +248,6 @@ EMM_OK	PROC FAR
 
 @@EXIT:
 
-	POP BP
-	
 	RET
 
 EMM_OK  ENDP
