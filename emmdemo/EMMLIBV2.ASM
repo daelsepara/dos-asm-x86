@@ -54,10 +54,10 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 ;   -------------------------------------------
 ;   OFFSET: Description 
 ;   -------------------------------------------
-;   0000-1: Expanded Memory Page Frame Segment
-;   0002-3: Total number of pages in system
-;   0004-5: Number of unallocated pages
-;   0006-7: EMM Version
+;   0000: Expanded Memory Page Frame Segment
+;   0002: Total number of pages in system
+;   0004: Number of unallocated pages
+;   0006: EMM Version
 ;
 ;   On error:
 ;   
@@ -75,7 +75,7 @@ EMM_INIT PROC FAR
 	CALL EMM_TEST			; Check if Expanded Memory Manager is present
 	JC @@ERROR
 	
-	CALL EMM_OK
+	CALL EMM_OK				; Check if Expanded Memory Manager is working
 	JC @@ERROR
 	
 	JMP @@OK
