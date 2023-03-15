@@ -227,7 +227,7 @@ EMM_OK	PROC FAR
 
 @@SETERR:
 
-	MOV AX, 0003H			; 0003 - Driver not ready
+	MOV AX, 0004H			; Driver not ready
 	
 @@SETCODE:
 	
