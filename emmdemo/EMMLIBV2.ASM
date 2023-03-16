@@ -6,22 +6,12 @@
 		
 	TITLE EMMLIBV2
 
-
 EMMDSEG SEGMENT PARA PUBLIC 'DATA'
 EMMNAME	DB "EMMXXXX0", 00H	; Expanded Memory Manager Driver Name
-EMMCODE DW 0000H			; Error codes:
-							; 0000 No error
-							; 0001 Expanded memory not present
-							; 0002 Expanded memory driver not loaded
-							; 0003 Expanded memory driver error
-							; 0004 Expanded memory driver not ready
-							
+EMMCODE DW 0000H			; Error codes: see EMMCONST.INC
 EMMDSEG ENDS
 
-; Offsets in user-provided array
-EMMBASE EQU 0               ; Expanded Memory Page Frame Segment
-EMMSIZE EQU 2               ; Total number of pages in system
-EMMFREE EQU 4               ; Number of unallocated pages
+INCLUDE EMMCONST.INC
 
 EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 	ASSUME CS:EMMCSEG, DS:EMMDSEG
@@ -140,8 +130,7 @@ EMM_TEST PROC FAR
 		
 @@NOTLOADED:
 	
-	MOV DX, 0002H			; Set error code to 2
-							; Expanded memory driver not loaded
+	MOV DX, EMM_NODRV		; Expanded memory driver not loaded
 @@CLOSE:
 
 	MOV AX, 3E00H			; Close file handle
@@ -152,11 +141,11 @@ EMM_TEST PROC FAR
 	JMP @@SETCODE
 
 @@DRVERR:
-	MOV DX, 0003H			; Driver error
+	MOV DX, EMM_DRIVER		; Driver error
 	JMP @@SETCODE
 
 @@NOEXPM:
-	MOV DX, 00001H			; No expanded memory present
+	MOV DX, EMM_NOMEM		; No expanded memory present
 		
 @@SETCODE:
 	MOV AX, DX
@@ -219,7 +208,7 @@ EMM_OK	PROC FAR
 
 @@SETERR:
 
-	MOV AX, 0004H			; Driver not ready
+	MOV AX, EMM_NOTREADY	; Driver not ready
 	
 @@SETCODE:
 	
