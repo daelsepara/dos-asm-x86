@@ -8,6 +8,7 @@ EMM_NOTREADY    EQU 4   ; Driver not ready
 
 ; Offsets in user-provided array
 
-EMMBASE         EQU 0   ; Expanded Memory Page Frame Segment
-EMMSIZE         EQU 2   ; Total number of pages in system
-EMMFREE         EQU 4   ; Number of unallocated pages
+OFFBASE         EQU 0   ; Expanded Memory Page Frame Segment
+OFFSIZE         EQU 2   ; Total number of pages in system
+OFFFREE         EQU 4   ; Number of unallocated pages
+OFFVERS         EQU 6   ; Expanded Memory Driver Version

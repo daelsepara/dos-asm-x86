@@ -8,7 +8,8 @@
 
 EMMDSEG SEGMENT PARA PUBLIC 'DATA'
 EMMNAME	DB "EMMXXXX0", 00H	; Expanded Memory Manager Driver Name
-EMMCODE DW 0000H			; Error codes: see EMMCONST.INC
+EMMBASE	DW 0000H			; Base Frame Segment
+EMMCODE	DW 0000H			; Error codes: see EMMCONST.INC
 EMMDSEG ENDS
 
 INCLUDE EMMCONST.INC
@@ -67,6 +68,23 @@ EMM_INIT PROC FAR
 	
 	CALL EMM_OK				; Check if Expanded Memory Manager is working
 	JC @@ERROR
+
+	PUSH AX					; Save registers (**)
+	PUSH DX
+
+	MOV AX, [BP + 08H]		; Get user data segment
+	MOV DX, [BP + 06H]		; Get user data offset
+
+	PUSH DX					; Pass pointer to user data
+	PUSH AX
+	CALL EMM_INFO			; Get EMM Info
+	
+	POP DX					; Restores DX, AX 
+	POP AX					; (**) These are not the
+							; same values on the
+							; call to EMM_INFO
+	
+	JC @@ERROR				; Check if there were errors
 	
 	JMP @@OK
 
@@ -131,26 +149,29 @@ EMM_TEST PROC FAR
 @@NOTLOADED:
 	
 	MOV DX, EMM_NODRV		; Expanded memory driver not loaded
+
 @@CLOSE:
 
 	MOV AX, 3E00H			; Close file handle
 	INT 21H
-	JC @@DRVERR
+	JC @@EMSERROR
 	
 	XOR DX, DX
 	JMP @@SETCODE
 
-@@DRVERR:
-	MOV DX, EMM_DRIVER		; Driver error
+@@EMSERROR:
+	
+	MOV DX, EMM_DRIVER		; EMS Driver error
 	JMP @@SETCODE
 
 @@NOEXPM:
+	
 	MOV DX, EMM_NOMEM		; No expanded memory present
 		
 @@SETCODE:
-	MOV AX, DX
 	
-	MOV DS:[EMMCODE], AX	; Set EMMDSEG:[EMMCODE]
+	MOV AX, DX
+	MOV DS:[EMMCODE], AX	; Set Error Code
 	
 	POP DX					; Restore DX, BX
 	POP BX
@@ -162,7 +183,7 @@ EMM_TEST PROC FAR
 
 	JZ @@OK
 
-@ERROR:
+@@ERROR:
 	
 	POPF
 	
@@ -190,8 +211,9 @@ EMM_TEST ENDP
 
 EMM_OK	PROC FAR
 
-	PUSHF					; Save registers
-	PUSH DS
+	PUSHF					; Save flags
+
+	PUSH DS					; Save registers
 	PUSH AX
 								
 	MOV AX, EMMDSEG			; Point DS to EMM Data
@@ -207,8 +229,9 @@ EMM_OK	PROC FAR
 	JMP @@SETCODE
 
 @@SETERR:
-
-	MOV AX, EMM_NOTREADY	; Driver not ready
+	
+	MOV AL, AH				; Use EMS Error codes
+	XOR AH, AH
 	
 @@SETCODE:
 	
@@ -240,6 +263,136 @@ EMM_OK	PROC FAR
 	RET
 
 EMM_OK  ENDP
+
+;------ EMM_INFO ------
+;
+; Gets Expanded memory information
+;
+; Inputs:
+;   FAR PTR to Destination Array
+;   SP+6: SEGMENT address of destination array
+;   SP+8:  OFFSET address of destination array
+;
+; Returns:
+;   On success:
+;
+;   CF is clear
+;   
+;   FAR PTR contains:
+;   -------------------------------------------
+;   OFFSET: Description 
+;   -------------------------------------------
+;   0000: Expanded Memory Page Frame Segment
+;   0002: Total number of pages in system
+;   0004: Number of unallocated pages
+;   0006: EMM Version
+;
+;   On error:
+;   
+;   CF is set
+
+	PUBLIC EMM_INFO
+
+EMM_INFO PROC FAR
+
+	PUSH BP
+	MOV BP, SP
+
+	PUSHF
+
+	PUSH DS
+	PUSH ES
+	PUSH AX
+	PUSH BX
+	PUSH DX
+	PUSH DI
+
+	MOV AX, [BP + 08H]		; Get user data segment
+	MOV DI, [BP + 06H]		; Get user data offset
+	MOV ES, AX				; Point ES:DI
+							; to user data array
+	
+	MOV AX, EMMDSEG			; Point DS to EMMLIB
+	MOV DS, AX				; Data segment
+		
+	MOV AH, 41H				; Get Page Frame Segment
+	INT 67H
+		
+	OR AH, AH
+	JNZ @@EMSERROR
+			
+	MOV ES:[DI+OFFBASE], BX	; Set EMM Page Frame Segment
+	MOV DS:[EMMBASE], BX		
+	
+	MOV AH, 42H				; Get Page Counts
+	INT 67H
+		
+	OR AH, AH
+	JNZ @@EMSERROR
+		
+	MOV ES:[DI+OFFSIZE], DX	; Set total number of pages
+	MOV ES:[DI+OFFFREE], BX	; Set total number of unallocated pages
+	
+	MOV AH, 46H
+	INT 67H
+
+	OR AH, AH
+	JNZ @@EMSERROR
+
+	MOV ES:[DI+OFFVERS], AL	; Set EMM version
+
+	XOR AX, AX				; No error
+	
+	JMP @@SETCODE
+
+@@EMSERROR:
+
+	MOV AL, AH				; Use EMS error codes
+	XOR AH, AH
+
+	XOR BX, BX				; Clear EMM Data
+	MOV DS:[EMMBASE], BX
+	MOV ES:[DI+OFFBASE], BX
+	MOV ES:[DI+OFFSIZE], BX
+	MOV ES:[DI+OFFFREE], BX
+	MOV ES:[DI+OFFVERS], BL
+
+@@SETCODE:
+	
+	MOV DS:[EMMCODE], AX
+
+	OR AX, AX				; Check if there were errors
+	
+	PUSH DI
+	PUSH DX
+	PUSH BX
+	PUSH AX
+	PUSH ES
+	PUSH DS
+
+	JNZ @ERROR				; Set CF
+
+@ERROR:
+	
+	POPF
+	
+	STC						; Set CF = There were errors
+	
+	JMP @@EXIT
+
+@@OK:
+		
+	POPF
+	
+	CLC						; Clear CF = No Error
+
+@@EXIT:
+
+	POP BP
+
+	RET 8
+		
+EMM_INFO ENDP
 
 EMMCSEG ENDS
 	
