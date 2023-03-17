@@ -9,7 +9,7 @@
 EMMDSEG SEGMENT PARA PUBLIC 'DATA'
 EMMNAME	DB "EMMXXXX0", 00H	; Expanded Memory Manager Driver Name
 EMMBASE	DW 0000H			; Base Frame Segment
-EMMCODE	DW 0000H			; Error codes: see EMMCONST.INC
+EMMCODE	DW 0000H			; DOS/EMM Error Codes
 EMMDSEG ENDS
 
 INCLUDE EMMCONST.INC
@@ -64,10 +64,10 @@ EMM_INIT PROC FAR
 	PUSHF					; Save flags
 
 	CALL EMM_TEST			; Check if Expanded Memory Manager is present
-	JC @@ERROR
+	JB @@ERROR
 	
 	CALL EMM_OK				; Check if Expanded Memory Manager is working
-	JC @@ERROR
+	JB @@ERROR
 
 	PUSH AX					; Save registers (**)
 	PUSH DX
@@ -84,10 +84,8 @@ EMM_INIT PROC FAR
 							; same values on the
 							; call to EMM_INFO
 	
-	JC @@ERROR				; Check if there were errors
+	JNB @@OK				; Check if there were errors
 	
-	JMP @@OK
-
 @@ERROR:
 	
 	POPF
@@ -134,40 +132,41 @@ EMM_TEST PROC FAR
 	MOV AX, 3D00H          	; AH = 3DH Open file, AL = 00H Read mode only
 	MOV DX, OFFSET EMMNAME 	; Set DS:DX to EMMNAME in data segment
 	INT 21H
-	JC @@NOEXPM				; Exit on error
+	JB @@DOSERROR			; Exit on error
 		
 	MOV BX, AX             	; File handle in AX after DOS call to 3DH
 	MOV AX, 4407H          	; IOCTL - Get Output Status
 	INT 21H
-	JC @@NOTLOADED			; Close handle on error
+	JB @@ERRORCLOSE			; Close handle on error
 
-	CMP AL, 0FFH			; Check if device driver
-	JNZ @@NOTLOADED
+	CMP AL, 0FFH			; Check if EMS device driver
+	JNZ @@NOTEMS
 	
 	JMP @@CLOSE
-		
-@@NOTLOADED:
-	
-	MOV DX, EMM_NODRV		; Expanded memory driver not loaded
+
+@@NOTEMS:
+	MOV AL, 05H				; DOS Error code for
+							; Access Denied
+
+@@ERRORCLOSE:
+
+	MOV DX, AX				; Set DOS ERROR Code
+	XOR DH, DH
 
 @@CLOSE:
 
 	MOV AX, 3E00H			; Close file handle
 	INT 21H
-	JC @@EMSERROR
+	JB @@DOSERROR
 	
 	XOR DX, DX
 	JMP @@SETCODE
 
-@@EMSERROR:
+@@DOSERROR:
 	
-	MOV DX, EMM_DRIVER		; EMS Driver error
-	JMP @@SETCODE
+	MOV DX, AX				; Set DOS ERROR Code
+	XOR DH, DH
 
-@@NOEXPM:
-	
-	MOV DX, EMM_NOMEM		; No expanded memory present
-		
 @@SETCODE:
 	
 	MOV AX, DX
@@ -181,7 +180,7 @@ EMM_TEST PROC FAR
 	POP AX					; Restore remaining registers
 	POP DS						
 
-	JZ @@OK
+	JZ @@OK					; Set CF
 
 @@ERROR:
 	
@@ -242,7 +241,7 @@ EMM_OK	PROC FAR
 	POP AX					; Restore registers
 	POP DS
 
-	JZ @@OK
+	JZ @@OK					; Set CF
 
 @@ERROR:
 	
@@ -370,9 +369,9 @@ EMM_INFO PROC FAR
 	PUSH ES
 	PUSH DS
 
-	JNZ @ERROR				; Set CF
+	JZ @@OK					; Set CF
 
-@ERROR:
+@@ERROR:
 	
 	POPF
 	
@@ -393,6 +392,174 @@ EMM_INFO PROC FAR
 	RET 8
 		
 EMM_INFO ENDP
+
+;------ EMM_ALLOC -----
+;
+; Allocates pages and
+; get handle.
+;
+; Inputs:
+;	SP+6: Number of pages to allocate (WORD) 
+;
+;	On success:
+;	CF is clear
+;	AX = Handle (0001H to 00FEH)
+;
+;	On failure:
+;	AX = FFFFH
+;	CF is set
+
+	PUBLIC EMM_ALLOC
+		
+EMM_ALLOC PROC FAR
+
+	PUSH BP
+	MOV BP, SP
+
+	PUSHF					; Save flags
+	
+	PUSH DS					; Save registers
+	PUSH BX					
+	PUSH DX
+	
+	MOV AX, EMMDSEG			; Point to EMM Data
+	MOV DS, AX
+	
+	CALL EMM_OK
+	JB @@EMSERROR
+
+	MOV BX, [BP + 06H]		; Get number of pages
+							; from the stack
+
+	MOV AH, 43H				; Allocate pages
+	INT 67H
+		
+	OR AH, AH				; Check if allocation failed
+	JNZ @@EMSERROR
+	
+	XOR AX, AX				; No error
+	JMP @@SETCODE
+
+@@EMSERROR:
+
+	MOV AL, AH				; Set error code
+	XOR AH, AH
+	
+	MOV DX, 0FFFFH			; Set handle to -1
+
+@@SETCODE:
+
+	MOV DS:[EMMCODE], AX
+	
+	OR AX, AX
+	
+	MOV AX, DX				; Get handle
+	
+	POP DX					; Restore registers
+	POP BX
+	POP DS
+
+	JZ @@OK					; Set CF
+
+@@ERROR:
+	
+	POPF
+	
+	STC						; Set CF = There were errors
+	
+	JMP @@EXIT
+
+@@OK:
+		
+	POPF
+	
+	CLC						; Clear CF = No Error
+
+@@EXIT:
+
+	POP BP
+
+	RET 4
+
+EMM_ALLOC ENDP
+
+;------ EMM_FREE ------
+;
+; Frees allocated memory
+;
+; Inputs:
+;	SP+6: Page handle to free
+;
+;	On success:
+;	CF is clear
+;
+;	On failure:
+;	CF is set
+
+	PUBLIC EMM_FREE
+
+EMM_FREE PROC FAR
+
+	PUSH BP
+	MOV BP, SP
+	
+	PUSHF					; Save flags
+	
+	PUSH DS					; Save registers
+	PUSH AX
+	PUSH DX
+	
+	MOV AX, EMMDSEG			; Point to EMM Data
+	MOV DS, AX
+		
+	MOV DX, [BP+06H]		; De-allocate handle
+	MOV AH, 45H				; ... and memory
+	INT 67H					; ... in DX
+		
+	OR AH, AH				; Check if de-allocation
+	JNZ @@EMSERROR			; failed
+		
+	XOR AX, AX				; No error
+	JMP @@SETCODE
+
+@@EMSERROR:
+
+	MOV AL, AH				; Set error code
+	XOR AH, AH
+		
+@@SETCODE:
+	
+	MOV DS:[EMMCODE], AX
+	
+	OR AX, AX
+
+	POP DX					; Restore registers
+	POP AX
+	POP DS
+
+	JZ @@OK					; Set CF
+		
+@@ERROR:
+	
+	POPF
+	
+	STC						; Set CF = There were errors
+	
+	JMP @@EXIT
+
+@@OK:
+		
+	POPF
+	
+	CLC						; Clear CF = No Error
+
+@@EXIT:
+
+	POP BP
+
+	RET 4
+
+EMM_FREE ENDP
 
 EMMCSEG ENDS
 	
