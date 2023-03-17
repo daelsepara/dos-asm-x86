@@ -715,7 +715,7 @@ EMM_MAP	PROC FAR
 
 EMM_MAP ENDP
 
-;------ EMM_MOVE -------
+;------ EMM_PUT -------
 ;
 ; Copies data into mapped page
 ; Assumes Expanded Memory Library was
@@ -727,9 +727,9 @@ EMM_MAP ENDP
 ;	BP+0A = Physical Page number
 ;	BP+0C = Number of Bytes to copy 
 
-	PUBLIC EMM_MOVE
+	PUBLIC EMM_PUT
 
-EMM_MOVE PROC FAR
+EMM_PUT PROC FAR
 	
 	PUSH BP
 	MOV BP, SP
@@ -828,9 +828,9 @@ EMM_MOVE PROC FAR
 
 	RET 8
 
-EMM_MOVE ENDP
+EMM_PUT ENDP
 
-;------ EMM_COPY -------
+;------ EMM_GET -------
 ;
 ; Copies data from mapped page
 ; into destination buffer in
@@ -844,9 +844,9 @@ EMM_MOVE ENDP
 ;	BP+0A = Physical Page number
 ;	BP+0C = Number of Bytes to copy 
 
-	PUBLIC EMM_COPY
+	PUBLIC EMM_GET
 
-EMM_COPY PROC FAR
+EMM_GET PROC FAR
 
 	PUSH BP
 	MOV BP, SP
@@ -945,7 +945,7 @@ EMM_COPY PROC FAR
 
 	RET 8
 	
-EMM_COPY ENDP
+EMM_GET ENDP
 
 EMMCSEG ENDS
 	
