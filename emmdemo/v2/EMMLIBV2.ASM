@@ -59,9 +59,6 @@ EMM_INIT PROC FAR
 	PUSH BP
 	MOV BP, SP
 
-	PUSH AX					; Save registers (**)
-	PUSH DX
-
 	PUSHF					; Save flags
 
 	CALL EMM_TEST			; Check if Expanded Memory Manager is present
@@ -69,6 +66,9 @@ EMM_INIT PROC FAR
 	
 	CALL EMM_OK				; Check if Expanded Memory Manager is working
 	JB @@ERROR
+
+	PUSH AX					; Save registers (**)
+	PUSH DX
 
 	MOV AX, [BP+08H]		; Get user data segment
 	MOV DX, [BP+06H]		; Get user data offset
@@ -116,7 +116,7 @@ EMM_INIT ENDP
 
 EMM_CHECK PROC FAR
 
-PUSHF						; Save flags
+	PUSHF					; Save flags
 
 	PUSH DS					; Save registers
 	PUSH ES
