@@ -20,10 +20,10 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 ; Subroutines now follow a PASCAL/STDCALL-like calling convention:
 ;
 ; 1. Parameters are passed on stack: Order is from right to left
-; 2. All subroutines are FAR addresses
+; 2. All subroutines require FAR calls
 ; 3. All modified registers are preserved
-; 4. Passed parameters are popped off the stack except:
-; 5. When single values need to be returned:
+; 4. Passed parameters are popped off the stack
+; 5. Return values place in:
 ;    a) AX = 16bit value / Near Pointer
 ;    b) DX:AX = 32bit value / Far pointer
 
@@ -37,22 +37,20 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 ;   	BP+08 = SEGMENT address of destination array
 ;
 ; Returns:
-;   On success:
-;
-;   CF is clear
+;	On success:
+;   	CF is clear
 ;   
-;   FAR PTR contains:
-;   -------------------------------------------
-;   OFFSET: Description 
-;   -------------------------------------------
-;   0000: Expanded Memory Page Frame Segment
-;   0002: Total number of pages in system
-;   0004: Number of unallocated pages
-;   0006: EMM Version
+;	FAR PTR contains:
+;	-------------------------------------------
+;	OFFSET: Description 
+;	-------------------------------------------
+;	0000: Expanded Memory Page Frame Segment
+;	0002: Total number of pages in system
+;	0004: Number of unallocated pages
+;	0006: EMM Version
 ;
-;   On error:
-;   
-;   CF is set
+;	On error:
+;	CF is set
 
     PUBLIC EMM_INIT
 
@@ -537,6 +535,8 @@ EMM_ALLOC PROC FAR
 	JZ @@OK			; Set CF
 
 @@ERROR:
+
+	MOV AX, 0FFFF		; return handle = -1
 	
 	POPF
 	
