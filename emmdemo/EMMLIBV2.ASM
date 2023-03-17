@@ -108,6 +108,84 @@ EMM_INIT PROC FAR
 
 EMM_INIT ENDP
 
+;------ EMM_CHECK ------
+;
+; Tests for Expanded Memory Manager using the
+; driver name compare method in interrupt vector
+; segment.
+
+	PUBLIC EMM_CHECK
+
+EMM_CHECK PROC FAR
+
+	PUSHF					; Save flags
+
+	PUSH DS					; Save registers
+	PUSH ES
+	PUSH AX
+	PUSH BX
+	PUSH CX
+	PUSH SI
+	PUSH DI
+
+	MOV AX, EMMDSEG
+	MOV DS, AX             	; Set DS = Data Segment
+	MOV SI, OFFSET EMMNAME	; Set DS:SI = EMM Device Driver Name
+		
+	MOV AX, 3567H          	; AH = 35H Get interrupt vector
+	INT 21H                	; AL = 67H Expanded Memory Manager
+							; Returns ES:BX = Address of interrupt vector
+								
+	MOV DI, 000AH			; Device driver name starts at ES:000AH
+	MOV CX, 0008H     	    ; Compare up to 8 characters
+	
+	CLD                     ; Compare in forward direction
+	REPZ CMPSB              ; Compare DS:SI to ES:DI
+	JNZ @@EMSERROR			; EMM is not present if names do not match
+		
+	XOR AX, AX             	; Set error code = 0, EMM driver present
+	JMP @@SETCODE
+
+@@EMSERROR:
+	
+	MOV AX, 0080H			; EMS error
+
+@@SETCODE:
+	
+	MOV DS:[EMMCODE], AX	; Set Error Code
+	
+	OR AX, AX				; Check if there were errors
+
+	POP DI					; Restore registers
+	POP SI
+	POP CX
+	POP BX
+	POP AX
+	POP ES
+	POP DS
+
+	JZ @@OK					; Set CF
+
+@@ERROR:
+	
+	POPF
+	
+	STC						; Set CF = There were errors
+	
+	JMP @@EXIT
+
+@@OK:
+		
+	POPF
+	
+	CLC						; Clear CF = No Error
+
+@@EXIT:
+
+	RET
+		
+EMM_CHECK ENDP
+
 ;------ EMM_TEST ------
 ;
 ; Tests for Expanded Memory Manager using the
@@ -171,13 +249,12 @@ EMM_TEST PROC FAR
 	
 	MOV AX, DX
 	MOV DS:[EMMCODE], AX	; Set Error Code
-	
-	POP DX					; Restore DX, BX
-	POP BX
-	
+
 	OR AX, AX				; Check if there were errors
 
-	POP AX					; Restore remaining registers
+	POP DX					; Restore registers
+	POP BX
+	POP AX
 	POP DS						
 
 	JZ @@OK					; Set CF
