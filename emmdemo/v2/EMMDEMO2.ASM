@@ -84,8 +84,9 @@ EMMDEMO2 PROC FAR
 
 @@MAIN00:
 
+	CALL @@NEWL
+	
 	MOV CX, 10H					; Set conversion to base 16
-
 	XOR AH, AH
 	MOV AL, DS:[EMMVERS]		; Show version
 	MOV DX, OFFSET SVERS

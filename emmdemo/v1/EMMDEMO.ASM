@@ -81,7 +81,8 @@ EMMDEMO PROC FAR
 	MOV DS:[EMMBASE], AX    	; Save values
 	MOV DS:[EMMFREE], BX
 	MOV DS:[EMMSIZE], DX
-		
+
+	CALL @@NEWL	
 	MOV CX, 10H             	; Set conversion to base 16
 	MOV AX, DS:[EMMBASE]    	; Show base frame info
 	MOV DX, OFFSET SBASE    
