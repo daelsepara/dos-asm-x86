@@ -91,23 +91,43 @@ EMMDEMO2 PROC FAR
 	XOR AH, AH
 	MOV AL, DS:[EMMVERS]		; Show version
 	MOV DX, OFFSET SVERS
+	PUSH CX						; Push base
+	PUSH AX						; Push number
+	PUSH DS						; Push caption segment
+	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
 
 	MOV AX, DS:[EMMBASE]		; Show base frame info
-	MOV DX, OFFSET SBASE    
+	MOV DX, OFFSET SBASE
+	PUSH CX						; Push base
+	PUSH AX						; Push number
+	PUSH DS						; Push caption segment
+	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
 		
 	MOV CX, 0AH					; Set succeeding conversions to base 10
 	MOV AX, 4000H				; Show page size 4000H = 16384 (size of page in bytes)
 	MOV DX, OFFSET SPAGE
+	PUSH CX						; Push base
+	PUSH AX						; Push number
+	PUSH DS						; Push caption segment
+	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
 		
 	MOV AX, DS:[EMMSIZE]		; Show total number of pages
 	MOV DX, OFFSET STOTAL   
+	PUSH CX						; Push base
+	PUSH AX						; Push number
+	PUSH DS						; Push caption segment
+	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
 		
 	MOV AX, DS:[EMMFREE]		; Show free pages
 	MOV DX, OFFSET SFREE
+	PUSH CX						; Push base
+	PUSH AX						; Push number
+	PUSH DS						; Push caption segment
+	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
 
 	MOV AX, DS:[EMMFREE]		; Check if we have enough memory
@@ -140,6 +160,10 @@ EMMDEMO2 PROC FAR
 	MOV CX, 0AH					; Show number of pages allocated
 	MOV AX, ALLOC
 	MOV DX, OFFSET SALLOC
+	PUSH CX						; Push base
+	PUSH AX						; Push number
+	PUSH DS						; Push caption segment
+	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
 
 	CALL @@NEWL
@@ -361,45 +385,54 @@ EMMDEMO2 ENDP
 ; Converts number then prints string
 ;
 ; Inputs:
-;	AX = Number to convert
-;   CX = Base
+;	BP+06 = Number to convert
+;	BP+08 = Base to convert number to
 
 	PUBLIC CPRINT
 
 CPRINT PROC FAR
 
+	PUSH BP
+	MOV BP, SP
+
+	PUSHF
     PUSH DS                     ; Save registers
-    PUSH DX
+    PUSH AX
 
-    MOV DX, DSEG                ; Set DS to DSEG
-    MOV DS, DX
+    MOV AX, DSEG                ; Set DS to DSEG
+    MOV DS, AX
 
-    MOV DX, ' '
-    PUSH DX                     ; byte used to fill
-    MOV DX, 6
-    PUSH DX                     ; fill up to 6 characters
+    MOV AX, ' '
+    PUSH AX                     ; byte used to fill
+    MOV AX, 6
+    PUSH AX                     ; fill up to 6 characters
     PUSH DS                     ; Buffer segment
-    MOV DX, OFFSET BUFFER       ; Buffer offset
-    PUSH DX
+    MOV AX, OFFSET BUFFER       ; Buffer offset
+    PUSH AX
     CALL FAR PTR FILL           ; clear buffer
 
-    MOV DX, 6                   ; width of buffer
-    PUSH DX
-    PUSH CX                     ; Base number
-    PUSH AX                     ; Number to convert
+    MOV AX, 6                   ; width of buffer
+    PUSH AX
+	MOV AX, [BP+08H]			; Base
+    PUSH AX		
+    MOV AX, [BP+06H]			; Number to convert
+	PUSH AX
     PUSH DS                     ; Buffer segment
-    MOV DX, OFFSET BUFFER       ; Buffer offset
-    PUSH DX                     ; Buffer offset
+    MOV AX, OFFSET BUFFER       ; Buffer offset
+    PUSH AX
     CALL FAR PTR CONVERT        ; Convert number
     
     PUSH DS
-    PUSH DX
+    PUSH AX
     CALL FAR PTR PRINT          ; Print converted number
 
-    POP DX                      ; Restore registers
+    POP AX						; Restore registers
     POP DS
+	POPF
 
-    RET
+	POP BP
+
+    RET 4
 
 CPRINT ENDP
 
@@ -408,21 +441,39 @@ CPRINT ENDP
 ; Converts number, prints it, adds caption/info
 ;
 ; Inputs:
-;   AX = Number to convert
-;   CX = Base
-;   DS:DX = Caption string
+;	BP+06 =  OFFSET address of caption string
+;	BP+08 = SEGMENT address of caption string
+;	BP+0A = Number to convert
+;	BP+0C = Base to convert number to
 
 	PUBLIC INFO
 
 INFO PROC FAR
-		
+
+	PUSH BP
+	MOV BP, SP
+
+	PUSHF						; Save registers
+	PUSH AX
+
+	MOV AX, [BP+0CH]			; Get base
+	PUSH AX
+	MOV AX, [BP+0AH]			; Get number to convert
+	PUSH AX
 	CALL FAR PTR CPRINT			; Convert and print number
     
-	PUSH DS
-	PUSH DX
+	MOV AX, [BP+08H]			; caption string segment
+	PUSH AX
+	MOV AX, [BP+06H]			; caption string offset
+	PUSH AX
 	CALL FAR PTR PRINT			; Print caption
 
-	RET
+	POP AX						; Restore registers
+	POPF
+
+	POP BP
+
+	RET 8
 
 INFO ENDP
 
