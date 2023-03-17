@@ -6,6 +6,7 @@
   - base page frame segment
   - total number of unallocated/free pages
   - total number of pages
+  - EMS Version (v2.0 library only)
 - Allocate/de-allocate pages
 - Map/unmap logical pages to physical pages
 - Copy to/from mapped pages
