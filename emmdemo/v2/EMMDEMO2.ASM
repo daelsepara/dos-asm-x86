@@ -37,7 +37,7 @@ EMMSIZE	DW 0000H           		; Total number of pages in system
 EMMFREE	DW 0000H				; Number of unallocated pages
 EMMVERS DB 00H					; EMS Version
 EMMHNDL DW 0000H				; Handle
-TESTSTR DB "EMMDEMOX"			; Test string to copy to expanded memory page
+TESTSTR DB "EMMDEMO2"			; Test string to copy to expanded memory page
 EMMTEST DB "         read from page 0"	; Buffer string for bytes copied from
         DB NEWLINE				; expanded memory page 0
 NULLSTR	DB 08H DUP (00H)		; 8 NULL bytes used to clear expanded memory page 0
@@ -47,14 +47,12 @@ DSEG ENDS
 CSEG SEGMENT PARA PUBLIC 'CODE'
 	ASSUME CS:CSEG, DS:DSEG
 
-;------ EMMDEMO ------
+;------ EMMDEMO2 ------
 ;
 ; Initialized EMM then prints
 ; Base frame and available 
 ; Expanded memory
-;
-; Uses EMMLIBV2, UTILS
-;
+
 	PUBLIC EMMDEMO2
 
 	EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR, EMM_MAP:FAR, EMM_PUT:FAR, EMM_GET:FAR
