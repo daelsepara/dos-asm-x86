@@ -536,8 +536,6 @@ EMM_ALLOC PROC FAR
 
 @@ERROR:
 
-	MOV AX, 0FFFF		; return handle = -1
-	
 	POPF
 	
 	STC			; Set CF = There were errors
