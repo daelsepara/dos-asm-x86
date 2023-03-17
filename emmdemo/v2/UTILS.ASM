@@ -19,19 +19,20 @@ UTILS SEGMENT PARA PUBLIC 'CODE'
 ;    a) AX = 16bit value / Near Pointer
 ;    b) DX:AX = 32bit value / Far pointer
 
-; ------ CLEAR ------
+; ------ FILL ------
 ;
-; Clears buffer
+; Fill buffer
 ;
 ; Inputs:
 ;   FAR PTR to Buffer
 ;   BP+06 =  OFFSET address of buffer
 ;   BP+08 = SEGMENT address of buffer
-;   BP+0A = character used to clear buffer
+;   BP+0A = Number of characters to clear
+;   BP+0C = character used to clear buffer
 
-    PUBLIC CLEAR
+    PUBLIC FILL
 
-CLEAR PROC FAR
+FILL PROC FAR
 
     PUSH BP
     MOV BP, SP
@@ -39,27 +40,30 @@ CLEAR PROC FAR
 	PUSHF				; Save registers
 	PUSH ES
 	PUSH AX
+    PUSH CX
 	PUSH DI
 
     MOV AX, [BP+08H]
     MOV ES, AX          ; Set ES:DI to
     MOV DI, [BP+06H]    ; buffer
 
-	MOV AL, [BP+0AH]	; Clear buffer
+    MOV CX, [BP+0AH]    ; Get count
+	MOV AX, [BP+0CH]	; Character to fill buffer
 
 	CLD
 	REPZ STOSB
 		
 	POP DI				; Restore registers
-	POP AX
+	POP CX
+    POP AX
 	POP ES
     POPF
 		
     POP BP
 
-	RET 5
+	RET 8
 
-CLEAR ENDP
+FILL ENDP
 
 ;------ CONVERT ------
 ;
@@ -82,6 +86,7 @@ CONVERT	PROC FAR
 	PUSHF				; Save registers
 	PUSH ES
 	PUSH AX
+    PUSH CX
 	PUSH DX
 	PUSH DI
 
@@ -126,6 +131,7 @@ CONVERT	PROC FAR
 	
     POP DI				; Restore registers
 	POP DX
+    POP CX
 	POP AX
 	POP ES
 	POPF
@@ -185,7 +191,9 @@ STRLEN	PROC FAR
     POP CX
 	POP ES
 	POPF
-		
+
+    POP BP
+
 	RET 4
 
 STRLEN ENDP

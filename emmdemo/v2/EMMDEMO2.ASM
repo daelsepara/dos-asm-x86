@@ -53,11 +53,12 @@ CSEG SEGMENT PARA PUBLIC 'CODE'
 ; Base frame and available 
 ; Expanded memory
 ;
-; Uses EMMLIBV2
+; Uses EMMLIBV2, UTILS
 ;
 	PUBLIC EMMDEMO2
 
 	EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR, EMM_MAP:FAR, EMM_PUT:FAR, EMM_GET:FAR
+    EXTRN FILL:FAR, STRLEN:FAR, CONVERT:FAR, PRINT:FAR
 
 EMMDEMO2 PROC FAR
 
@@ -144,6 +145,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET SOK		; Show allocation success
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 		
 	XOR AX, AX
@@ -167,6 +170,8 @@ EMMDEMO2 PROC FAR
 @@MAIN03:
 	CALL @@NEWL
 	MOV DX, OFFSET SMAPPED  ; Logical page 0 was mapped to physical Page 0
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 
 @@ABRT04:
@@ -229,6 +234,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET EMMTEST  ; Print data copied from page (EMMTEST)
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT		
 	
     XOR AX, AX              ; Physical page 0
@@ -253,7 +260,9 @@ EMMDEMO2 PROC FAR
 	
 	CALL @@NEWL
 	MOV DX, OFFSET SUNMAP   ; Page 0 was unmapped
-	CALL FAR PTR PRINT
+	PUSH DS
+    PUSH DX
+    CALL FAR PTR PRINT
 		
 	MOV AX, DS:[EMMHNDL]    ; Get handle
     PUSH AX
@@ -271,6 +280,8 @@ EMMDEMO2 PROC FAR
 				
 	CALL @@NEWL
 	MOV DX, OFFSET SFREED		; Expanded memory was freed
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 		
 @@OK:
@@ -281,6 +292,8 @@ EMMDEMO2 PROC FAR
 @@NEWL LABEL NEAR
 
 	MOV DX, OFFSET SENDL		; Prints a newline character
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 	RETN
 
@@ -288,6 +301,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET SLESS		; Not enough expanded memory
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
@@ -295,6 +310,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET SFAIL		; Expanded memory was not allocated
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
@@ -302,6 +319,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET SNOMAP		; Physical page not mapped
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
@@ -309,6 +328,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET SINIT		; EMM library not initialized
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
@@ -316,6 +337,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET SLEAK		; Expanded memory was not freed
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
@@ -323,6 +346,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET SFUNMAP		; Physical page was not unmapped
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 				
@@ -330,6 +355,8 @@ EMMDEMO2 PROC FAR
 
 	CALL @@NEWL
 	MOV DX, OFFSET SNONE    	; Expanded memory manager is not available
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT
 
 @@ERROR:		
@@ -342,218 +369,50 @@ EMMDEMO2 PROC FAR
 
 EMMDEMO2 ENDP
 
-;------ CLEAR ------
-;
-; Clears buffer
-;
-; Inputs:
-;	ES:DI = Pointer to buffer
-;	CX = Size of buffer in bytes
-
-	PUBLIC CLEAR
-
-CLEAR PROC FAR
-		
-	PUSHF				; Save registers
-	PUSH ES
-	PUSH AX
-	PUSH DI
-		
-	MOV AL, ' '			; Clear buffer
-
-	CLD
-	REPZ STOSB
-		
-	POP DI				; Restore registers
-	POP AX
-	POP ES
-	POPF
-		
-	RET
-
-CLEAR ENDP
-
-;------ CONVERT ------
-;
-; Convert number to string in buffer
-;
-; Inputs:
-;	AX = Number
-;	CX = Base
-;	ES:DI = Pointer to end of buffer
-
-	PUBLIC CONVERT
-
-CONVERT PROC FAR
-		
-	PUSHF				; Save registers
-	PUSH ES
-	PUSH AX
-	PUSH DX
-	PUSH DI
-		
-@@LOOP:
-	XOR DX, DX			; Clear upper half of 32bit number in DX:AX
-	DIV CX				; Process one digit at a time
-		
-	CMP DL, 09H			; Check if remainder is not numeric
-	JA @@FIX
-		
-	ADD DL, '0'			; Convert digit to ASCII equivalent
-	JMP @@STORE
-
-@@FIX:
-	ADD DL, 37H			; Convert digit to A-Z
-		
-@@STORE:
-
-	MOV ES:[DI], DL		; Store in buffer then move to next location
-	DEC DI
-	
-    OR AX, AX			; Check if there are any digits left to convert
-	JZ @@END
-	
-    JMP @@LOOP
-		
-@@END:
-	
-    POP DI				; Restore registers
-	POP DX
-	POP AX
-	POP ES
-	POPF
-
-	RET
-
-CONVERT ENDP
-
-;------ STRLEN ------
-;
-; Get string length
-;
-; Inputs:
-;	DS:DX = Offset to string (00H terminated)
-;
-; Outputs:
-;	CX = String Length
-
-	PUBLIC STRLEN
-		
-STRLEN PROC FAR
-
-	PUSH ES				; Save registers
-	PUSH AX
-	PUSH DI
-	PUSHF
-		
-	MOV AX, DS			; Copy DS:DX into ES:DI
-	MOV ES, AX
-	MOV DI, DX
-		
-	XOR AX, AX			; Scan for end of string (NULL = 00H)
-	XOR CX, CX			; Initialize string length
-
-	CLD				; Search in Forward direction
-
-@@LOOP:
-	SCASB
-	JZ @@EXIT
-	INC CX				; String length in CX
-	JMP @@LOOP
-
-@@EXIT:
-	POPF				; Restore registers
-	POP DI
-	POP AX
-	POP ES
-		
-	RETF
-
-STRLEN ENDP
-
-;------ PRINT ------
-;
-; Prints string. Uses DOS's write
-; to file service
-;
-; Inputs:
-;	DS:DX = Offset to string (00H terminated)
-
-	PUBLIC PRINT
-
-PRINT PROC FAR
-		
-	PUSHF				; Save registers
-	PUSH AX
-	PUSH BX
-	PUSH CX
-		
-	CALL FAR PTR STRLEN		; Get string length into CX
-		
-	OR CX, CX			; Check if there are
-	JZ @@EXIT			; text to print
-		
-	MOV AH, 40H			; Print using DOS service
-	MOV BX, 0001H			; Print to STDOUT
-	INT 21H
-
-@@EXIT:
-	POP CX				; Restore registers
-	POP BX
-	POP AX
-	POPF
-		
-	RET
-
-PRINT ENDP
-
 ;------ CPRINT ------
 ;
 ; Converts number then prints string
 ;
 ; Inputs:
 ;	AX = Number to convert
-;       CX = Base
+;   CX = Base
 
 	PUBLIC CPRINT
 
 CPRINT PROC FAR
 
-	PUSHF				; Save Registers
-	PUSH DS
-	PUSH ES
-	PUSH DX
-	PUSH DI
+    PUSH DS                     ; Save registers
+    PUSH DX
 
-	PUSH AX				; Save number in stack
+    MOV DX, DSEG                ; Set DS to DSEG
+    MOV DS, DX
 
-	MOV AX, DSEG			; Point DS:DX to buffer
-	MOV DS, AX
-	MOV DX, OFFSET BUFFER
-	MOV ES, AX			; Point ES:DI to start of buffer
-	MOV DI, DX				
-		
-	PUSH CX				; Save base number in stack
+    MOV DX, ' '
+    PUSH DX                     ; byte used to fill
+    MOV DX, 6
+    PUSH DX                     ; fill up to 6 characters
+    PUSH DS                     ; Buffer segment
+    MOV DX, OFFSET BUFFER       ; Buffer offset
+    PUSH DX
+    CALL FAR PTR FILL           ; clear buffer
 
-	MOV CX, 06H			; Clear buffer (6 characters)
-	CALL FAR PTR CLEAR
+    MOV DX, 6                   ; width of buffer
+    PUSH DX
+    PUSH CX                     ; Base number
+    PUSH AX                     ; Number to convert
+    PUSH DS                     ; Buffer segment
+    MOV DX, OFFSET BUFFER       ; Buffer offset
+    PUSH DX                     ; Buffer offset
+    CALL FAR PTR CONVERT        ; Convert number
+    
+    PUSH DS
+    PUSH DX
+    CALL FAR PTR PRINT          ; Print converted number
 
-	POP CX				; Restore base number in CX
-		
-	ADD DI, 05H			; Point ES:DI to end of buffer
-		
-	POP AX				; Restore number in AX
-		
-	CALL FAR PTR CONVERT		; Do conversion
-	CALL FAR PTR PRINT		; ... then print
-		
-	POP DI				; Restore registers
-	POP DX
-	POP ES
-	POP DS
-	POPF
-		
-	RET
+    POP DX                      ; Restore registers
+    POP DS
+
+    RET
 
 CPRINT ENDP
 
@@ -562,15 +421,18 @@ CPRINT ENDP
 ; Converts number, prints it, adds caption/info
 ;
 ; Inputs:
-;	AX = Number to convert
-;	CX = Base
-;       DS:DX = Caption string
+;   AX = Number to convert
+;   CX = Base
+;   DS:DX = Caption string
 
 	PUBLIC INFO
 
 INFO PROC FAR
 		
 	CALL FAR PTR CPRINT		; Convert and print number
+    
+    PUSH DS
+    PUSH DX
 	CALL FAR PTR PRINT		; Print caption
 
 	RET
