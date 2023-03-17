@@ -9,10 +9,10 @@
 	.MODEL SMALL
 	.STACK 0400H            ; Increased stack stize
 
-DSEG 	SEGMENT PARA PUBLIC 'DATA'
+DSEG SEGMENT PARA PUBLIC 'DATA'
+
 NEWLINE	EQU 0AH, 0DH, 00H	; New line
 ALLOC	EQU 0100H			; Number of pages to allocate
-
 SENDL	DB NEWLINE
 SVERS   DB " EMS Version", NEWLINE
 SBASE	DB " Base frame", NEWLINE
@@ -44,8 +44,8 @@ NULLSTR	DB 08H DUP (00H)	; 8 NULL bytes used to clear expanded memory page 0
 
 DSEG ENDS
 
-CSEG    SEGMENT PARA PUBLIC 'CODE'
-		ASSUME CS:CSEG, DS:DSEG
+CSEG SEGMENT PARA PUBLIC 'CODE'
+    ASSUME CS:CSEG, DS:DSEG
 
 ;------ EMMDEMO ------
 ;
@@ -352,7 +352,7 @@ EMMDEMO2 ENDP
 
 	PUBLIC CLEAR
 
-CLEAR	PROC FAR
+CLEAR PROC FAR
 		
 	PUSHF				; Save registers
 	PUSH ES
@@ -371,7 +371,7 @@ CLEAR	PROC FAR
 		
 	RET
 
-CLEAR	ENDP
+CLEAR ENDP
 
 ;------ CONVERT ------
 ;
@@ -384,10 +384,9 @@ CLEAR	ENDP
 
 	PUBLIC CONVERT
 
-CONVERT	PROC FAR
+CONVERT PROC FAR
 		
 	PUSHF				; Save registers
-	PUSH DS
 	PUSH ES
 	PUSH AX
 	PUSH DX
@@ -406,19 +405,22 @@ CONVERT	PROC FAR
 @@FIX:
 	ADD DL, 37H			; Convert digit to A-Z
 		
-@@STORE:                
-	MOV [DI], DL			; Store in buffer then move to next location
+@@STORE:
+
+	MOV ES:[DI], DL		; Store in buffer then move to next location
 	DEC DI
-	OR AX, AX			; Check if there are any digits left to convert
+	
+    OR AX, AX			; Check if there are any digits left to convert
 	JZ @@END
-	JMP @@LOOP
+	
+    JMP @@LOOP
 		
 @@END:
-	POP DI				; Restore registers
+	
+    POP DI				; Restore registers
 	POP DX
 	POP AX
 	POP ES
-	POP DS
 	POPF
 
 	RET
@@ -437,7 +439,7 @@ CONVERT ENDP
 
 	PUBLIC STRLEN
 		
-STRLEN	PROC FAR
+STRLEN PROC FAR
 
 	PUSH ES				; Save registers
 	PUSH AX
@@ -467,7 +469,7 @@ STRLEN	PROC FAR
 		
 	RETF
 
-STRLEN	ENDP
+STRLEN ENDP
 
 ;------ PRINT ------
 ;
@@ -479,7 +481,7 @@ STRLEN	ENDP
 
 	PUBLIC PRINT
 
-PRINT	PROC FAR
+PRINT PROC FAR
 		
 	PUSHF				; Save registers
 	PUSH AX
@@ -503,7 +505,7 @@ PRINT	PROC FAR
 		
 	RET
 
-PRINT	ENDP
+PRINT ENDP
 
 ;------ CPRINT ------
 ;
@@ -515,7 +517,7 @@ PRINT	ENDP
 
 	PUBLIC CPRINT
 
-CPRINT	PROC FAR
+CPRINT PROC FAR
 
 	PUSHF				; Save Registers
 	PUSH DS
@@ -553,7 +555,7 @@ CPRINT	PROC FAR
 		
 	RET
 
-CPRINT	ENDP
+CPRINT ENDP
 
 ;------ INFO ------
 ;
@@ -566,15 +568,15 @@ CPRINT	ENDP
 
 	PUBLIC INFO
 
-INFO	PROC FAR
+INFO PROC FAR
 		
 	CALL FAR PTR CPRINT		; Convert and print number
 	CALL FAR PTR PRINT		; Print caption
 
 	RET
 
-INFO	ENDP
+INFO ENDP
 
-CSEG    ENDS
+CSEG ENDS
 
 	END EMMDEMO2

@@ -9,11 +9,10 @@
 	.MODEL SMALL
 	.STACK 0100H
 
-DSEG 	SEGMENT PARA PUBLIC 'DATA'
+DSEG SEGMENT PARA PUBLIC 'DATA'
 
 NEWLINE	EQU 0AH, 0DH, 00H		; New line
 ALLOC	EQU 0100H			; Number of pages to allocate
-
 SENDL	DB NEWLINE
 SBASE	DB " Base frame", NEWLINE
 SPAGE	DB " Page size in bytes", NEWLINE
@@ -43,8 +42,8 @@ NULLSTR	DB 08H DUP (00H)		; 8 NULL bytes used to clear expanded memory page 0
 
 DSEG ENDS
 
-CSEG    SEGMENT PARA PUBLIC 'CODE'
-		ASSUME CS:CSEG, DS:DSEG
+CSEG SEGMENT PARA PUBLIC 'CODE'
+	ASSUME CS:CSEG, DS:DSEG
 
 ;------ EMMDEMO ------
 ;
@@ -60,7 +59,7 @@ CSEG    SEGMENT PARA PUBLIC 'CODE'
 
 	EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR, EMM_MAP:FAR, EMM_MOVE:FAR, EMM_COPY:FAR
 
-EMMDEMO	PROC FAR
+EMMDEMO PROC FAR
 
 	MOV AX, DSEG            	; Initialize DS
 	MOV DS, AX
@@ -74,11 +73,13 @@ EMMDEMO	PROC FAR
 					; DX = Total pages
 
 @@ABRT00:
+
 	JMP  @@NOEMM			; NOEMM is beyond a SHORT jump
 					; ... so we JMP short to @@ABORT
 					; ... then JMP to @NOEMM
 
-@@MAIN00:		
+@@MAIN00:
+
 	MOV DS:[EMMBASE], AX    	; Save values
 	MOV DS:[EMMFREE], BX
 	MOV DS:[EMMSIZE], DX
@@ -107,18 +108,22 @@ EMMDEMO	PROC FAR
 	JMP @@MAIN01
 
 @@ABRT01:
+
 	JMP @@LESS
 	
 @@MAIN01:		
+
 	MOV AX, ALLOC			; Allocate pages
 	CALL EMM_ALLOC
 	JC @@ABRT02
 	JMP @@MAIN02
 	
 @@ABRT02:
+
 	JMP @@FAIL
 
 @@MAIN02:
+
 	MOV DS:[EMMHNDL], AX		; Save handle
 		
 	MOV CX, 0AH			; Show number of pages allocated
@@ -138,15 +143,18 @@ EMMDEMO	PROC FAR
 	JMP @@MAIN03
 	
 @@ABRT03:
+
 	JMP @@NOMAP
 
 @@MAIN03:	
+
 	CALL @@NEWL
 	MOV DX, OFFSET SMAPPED		; Logical page 0 was mapped to physical Page 0
 	CALL FAR PTR PRINT
 
 @@ABRT04:
 @@MAIN04:
+
 	MOV DX, OFFSET NULLSTR		; Clears first 8 bytes of page 0
 	XOR AX, AX			; Physical Page 0 (destination page)
 	MOV CX, 8			; Copy 8 bytes
@@ -160,9 +168,11 @@ EMMDEMO	PROC FAR
 	JMP @@MAIN05
 	
 @@ABRT05:
+
 	JMP @@INIT			; EMM Library was not initialized
 
 @@MAIN05:
+
 	MOV DX, OFFSET EMMTEST		; Copy 8 bytes from page 0
 	XOR AX, AX			; Physical Page 0 (source page)
 	MOV CX, 8			; Copy 8 bytes
@@ -171,9 +181,11 @@ EMMDEMO	PROC FAR
 	JMP @@MAIN06			; ... one page at a time
 	
 @@ABRT06:
+
 	JMP @@INIT			; EMM Library was not initialized
 	
 @@MAIN06:
+
 	PUSH DX				; Print data copied from page (EMMTEST)
 	CALL @@NEWL
 	POP DX
@@ -187,6 +199,7 @@ EMMDEMO	PROC FAR
 	JMP @@MAIN07
 	
 @@ABRT07:
+
 	JMP @@NOUNMAP
 	
 @@MAIN07:
@@ -201,6 +214,7 @@ EMMDEMO	PROC FAR
 	JMP @@MAIN08
 
 @@ABRT08:
+
 	JMP @@LEAK
 	
 @@MAIN08:
@@ -210,6 +224,7 @@ EMMDEMO	PROC FAR
 	CALL FAR PTR PRINT
 		
 @@OK:
+
 	MOV AX, 4C00H           	; Set exit code to 0
 	JMP @@EXIT
 
@@ -220,18 +235,21 @@ EMMDEMO	PROC FAR
 	RETN
 
 @@LESS:
+
 	CALL @@NEWL
 	MOV DX, OFFSET SLESS		; Not enough expanded memory
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
 @@FAIL:
+
 	CALL @@NEWL
 	MOV DX, OFFSET SFAIL		; Expanded memory was not allocated
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
 @@NOMAP:
+
 	CALL @@NEWL
 	MOV DX, OFFSET SNOMAP		; Physical page not mapped
 	CALL FAR PTR PRINT
@@ -239,6 +257,7 @@ EMMDEMO	PROC FAR
 
 
 @@INIT:
+
 	CALL @@NEWL
 	MOV DX, OFFSET SINIT		; EMM library not initialized
 	CALL FAR PTR PRINT
@@ -246,29 +265,34 @@ EMMDEMO	PROC FAR
 
 
 @@LEAK:
+
 	CALL @@NEWL
 	MOV DX, OFFSET SLEAK		; Expanded memory was not freed
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 
 @@NOUNMAP:
+
 	CALL @@NEWL
 	MOV DX, OFFSET SFUNMAP		; Physical page was not unmapped
 	CALL FAR PTR PRINT
 	JMP @@ERROR
 				
 @@NOEMM:
+
 	CALL @@NEWL
 	MOV DX, OFFSET SNONE    	; Expanded memory manager is not available
 	CALL FAR PTR PRINT
 
 @@ERROR:		
+
 	MOV AX, 4C01H           	; Set exit code to 1
 
 @@EXIT:         
+
 	INT 21H
 
-EMMDEMO	ENDP
+EMMDEMO ENDP
 
 ;------ CLEAR ------
 ;
@@ -280,7 +304,7 @@ EMMDEMO	ENDP
 
 	PUBLIC CLEAR
 
-CLEAR	PROC FAR
+CLEAR PROC FAR
 		
 	PUSHF				; Save registers
 	PUSH ES
@@ -299,7 +323,7 @@ CLEAR	PROC FAR
 		
 	RET
 
-CLEAR	ENDP
+CLEAR ENDP
 
 ;------ CONVERT ------
 ;
@@ -312,16 +336,16 @@ CLEAR	ENDP
 
 	PUBLIC CONVERT
 
-CONVERT	PROC FAR
+CONVERT PROC FAR
 		
 	PUSHF				; Save registers
-	PUSH DS
 	PUSH ES
 	PUSH AX
 	PUSH DX
 	PUSH DI
 		
 @@LOOP:
+	
 	XOR DX, DX			; Clear upper half of 32bit number in DX:AX
 	DIV CX				; Process one digit at a time
 		
@@ -332,21 +356,25 @@ CONVERT	PROC FAR
 	JMP @@STORE
 
 @@FIX:
+	
 	ADD DL, 37H			; Convert digit to A-Z
 		
 @@STORE:                
-	MOV [DI], DL			; Store in buffer then move to next location
+	
+	MOV ES:[DI], DL		; Store in buffer then move to next location
 	DEC DI
+	
 	OR AX, AX			; Check if there are any digits left to convert
 	JZ @@END
+	
 	JMP @@LOOP
 		
 @@END:
+	
 	POP DI				; Restore registers
 	POP DX
 	POP AX
 	POP ES
-	POP DS
 	POPF
 
 	RET
@@ -365,7 +393,7 @@ CONVERT ENDP
 
 	PUBLIC STRLEN
 		
-STRLEN	PROC FAR
+STRLEN PROC FAR
 
 	PUSH ES				; Save registers
 	PUSH AX
@@ -382,12 +410,14 @@ STRLEN	PROC FAR
 	CLD				; Search in Forward direction
 
 @@LOOP:
+
 	SCASB
 	JZ @@EXIT
 	INC CX				; String length in CX
 	JMP @@LOOP
 
 @@EXIT:
+
 	POPF				; Restore registers
 	POP DI
 	POP AX
@@ -395,7 +425,7 @@ STRLEN	PROC FAR
 		
 	RETF
 
-STRLEN	ENDP
+STRLEN ENDP
 
 ;------ PRINT ------
 ;
@@ -407,7 +437,7 @@ STRLEN	ENDP
 
 	PUBLIC PRINT
 
-PRINT	PROC FAR
+PRINT PROC FAR
 		
 	PUSHF				; Save registers
 	PUSH AX
@@ -424,6 +454,7 @@ PRINT	PROC FAR
 	INT 21H
 
 @@EXIT:
+
 	POP CX				; Restore registers
 	POP BX
 	POP AX
@@ -431,7 +462,7 @@ PRINT	PROC FAR
 		
 	RET
 
-PRINT	ENDP
+PRINT ENDP
 
 ;------ CPRINT ------
 ;
@@ -443,7 +474,7 @@ PRINT	ENDP
 
 	PUBLIC CPRINT
 
-CPRINT	PROC FAR
+CPRINT PROC FAR
 
 	PUSHF				; Save Registers
 	PUSH DS
@@ -481,7 +512,7 @@ CPRINT	PROC FAR
 		
 	RET
 
-CPRINT	ENDP
+CPRINT ENDP
 
 ;------ INFO ------
 ;
@@ -494,15 +525,15 @@ CPRINT	ENDP
 
 	PUBLIC INFO
 
-INFO	PROC FAR
+INFO PROC FAR
 		
 	CALL FAR PTR CPRINT		; Convert and print number
 	CALL FAR PTR PRINT		; Print caption
 
 	RET
 
-INFO	ENDP
+INFO ENDP
 
-CSEG    ENDS
+CSEG ENDS
 
 	END EMMDEMO
