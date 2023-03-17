@@ -30,36 +30,36 @@ UTILS SEGMENT PARA PUBLIC 'CODE'
 ;	BP+0A = Number of characters to clear
 ;	BP+0C = character used to clear buffer
 
-    	PUBLIC FILL
+	PUBLIC FILL
 
 FILL PROC FAR
 
-    	PUSH BP
-    	MOV BP, SP
+	PUSH BP
+	MOV BP, SP
 
-	PUSHF			; Save registers
+	PUSHF				; Save registers
 	PUSH ES
 	PUSH AX
-    	PUSH CX
+	PUSH CX
 	PUSH DI
 
-    	MOV AX, [BP+08H]
-    	MOV ES, AX		; Set ES:DI to
-    	MOV DI, [BP+06H]	; buffer
+	MOV AX, [BP+08H]
+	MOV ES, AX			; Set ES:DI to
+	MOV DI, [BP+06H]	; buffer
 
-    	MOV CX, [BP+0AH]	; Get count
+	MOV CX, [BP+0AH]	; Get count
 	MOV AX, [BP+0CH]	; Character to fill buffer
 
 	CLD
 	REPZ STOSB
 		
-	POP DI			; Restore registers
+	POP DI				; Restore registers
 	POP CX
-    	POP AX
+	POP AX
 	POP ES
-    	POPF
+	POPF
 		
-    	POP BP
+	POP BP
 
 	RET 8
 
@@ -80,63 +80,63 @@ FILL ENDP
 
 CONVERT PROC FAR
 
-    	PUSH BP
-    	MOV BP, SP
+	PUSH BP
+	MOV BP, SP
 
-	PUSHF			; Save registers
+	PUSHF				; Save registers
 	PUSH ES
 	PUSH AX
-    	PUSH CX
+	PUSH CX
 	PUSH DX
 	PUSH DI
 
-    	MOV AX, [BP+08H]	; Get buffer segment
-    	MOV ES, AX
-    	MOV DI, [BP+06H]	; Get buffer offset
-    	MOV AX, [BP+0EH]	; Get buffer width
-    	DEC AX
-    	ADD DI, AX		; Point ES:DI
-				; to the last byte of
-				; the buffer
+	MOV AX, [BP+08H]	; Get buffer segment
+	MOV ES, AX
+	MOV DI, [BP+06H]	; Get buffer offset
+	MOV AX, [BP+0EH]	; Get buffer width
+	DEC AX
+	ADD DI, AX			; Point ES:DI
+						; to the last byte of
+						; the buffer
 
-    	MOV AX, [BP+0AH]	; Get number
-    	MOV CX, [BP+0CH]	; Get base
+	MOV AX, [BP+0AH]	; Get number
+	MOV CX, [BP+0CH]	; Get base
 
 @@LOOP:
 	
-    	XOR DX, DX		; Clear upper half of 32bit number in DX:AX
-	DIV CX			; Process one digit at a time
+	XOR DX, DX			; Clear upper half of 32bit number in DX:AX
+	DIV CX				; Process one digit at a time
 		
-	CMP DL, 09H		; Check if remainder is not numeric
+	CMP DL, 09H			; Check if remainder is not numeric
 	JA @@FIX
 		
-	ADD DL, '0'		; Convert digit to ASCII equivalent
+	ADD DL, '0'			; Convert digit to ASCII equivalent
 	JMP @@STORE
 
 @@FIX:
 	
-    	ADD DL, 37H		; Convert digit to A-Z
+	ADD DL, 37H			; Convert digit to A-Z
 		
 @@STORE:                
 	
-    	MOV ES:[DI], DL		; Store in buffer then move to next location
+	MOV ES:[DI], DL		; Store in buffer then move to next location
 	DEC DI
 	
-    	OR AX, AX		; Check if there are any digits left to convert
-    	JZ @@END
+	OR AX, AX			; Check if there are any digits left to convert
+	JZ @@END
 	
-    	JMP @@LOOP
+	JMP @@LOOP
 		
 @@END:
 	
-    	POP DI			; Restore registers
+	POP DI				; Restore registers
 	POP DX
-    	POP CX
+	POP CX
 	POP AX
 	POP ES
 	POPF
 
-    	POP BP
+	POP BP
 
 	RET 10
 
@@ -161,34 +161,34 @@ STRLEN PROC FAR
 	PUSH BP
 	MOV BP, SP
 
-    	PUSHF			; Save registers
+	PUSHF				; Save registers
 	PUSH ES
-    	PUSH CX
+	PUSH CX
 	PUSH DI
 		
 	MOV AX, [BP+08H]	; get string buffer segment
 	MOV DI, [BP+06H]	; get string buffer offset
-	MOV ES, AX		; Point ES:DI to string buffer
+	MOV ES, AX			; Point ES:DI to string buffer
 		
-	XOR AX, AX		; Scan for end of string (NULL = 00H)
-	XOR CX, CX		; Initialize string length
+	XOR AX, AX			; Scan for end of string (NULL = 00H)
+	XOR CX, CX			; Initialize string length
 
-	CLD			; Search in Forward direction
+	CLD					; Search in Forward direction
 
 @@LOOP:
 
 	SCASB
 	JZ @@EXIT
 	
-    	INC CX			; String length in CX
+	INC CX				; String length in CX
 	JMP @@LOOP
 
 @@EXIT:
 
-    	MOV AX, CX		; Copy string length to AX
+	MOV AX, CX			; Copy string length to AX
 
-	POP DI			; Restore registers
-    	POP CX
+	POP DI				; Restore registers
+	POP CX
 	POP ES
 	POPF
 
@@ -208,10 +208,10 @@ STRLEN ENDP
 ;	BP+08 = SEGMENT address of string
 ;	String must be NULL (00H) terminated
 
-    	PUBLIC PRINT
+	PUBLIC PRINT
 
-STDIN  	EQU 0			; Standard Input Device - can be redirected (STDIN)
-STDOUT	EQU 1            	; Standard Output Device - can be redirected (STDOUT)
+STDIN	EQU 0			; Standard Input Device - can be redirected (STDIN)
+STDOUT	EQU 1			; Standard Output Device - can be redirected (STDOUT)
 STDERR	EQU 2			; Standard Error Device - can be redirected (STDERR)
 STDAUX	EQU 3			; Standard Auxiliary Device (STDAUX)
 STDPRN	EQU 4			; Standard Printer Device (STDPRN)
@@ -219,10 +219,10 @@ STDPRN	EQU 4			; Standard Printer Device (STDPRN)
 PRINT PROC FAR
 
 	PUSH BP
-    	MOV BP, SP
+	MOV BP, SP
 	
-    	PUSHF			; Save registers
-    	PUSH DS
+	PUSHF				; Save registers
+	PUSH DS
 	PUSH AX
 	PUSH BX
 	PUSH CX
@@ -234,21 +234,21 @@ PRINT PROC FAR
 	PUSH AX
 	CALL FAR PTR STRLEN	; Get string length
 		
-	OR AX, AX		; Check if there are
-	JZ @@EXIT		; characters to print
+	OR AX, AX			; Check if there are
+	JZ @@EXIT			; characters to print
 
-	MOV CX, AX		; Copy length to CX
+	MOV CX, AX			; Copy length to CX
 	MOV AX, [BP+08H]	; get string buffer segment
 	MOV DX, [BP+06H]	; get string buffer offset
-	MOV DS, AX		; Point DS:DX to string buffer
+	MOV DS, AX			; Point DS:DX to string buffer
 
-	MOV AH, 40H		; Print using DOS service
+	MOV AH, 40H			; Print using DOS service
 	MOV BX, STDOUT		; Print to STDOUT
 	INT 21H
 
 @@EXIT:
 
-	POP DX			; Restore registers
+	POP DX				; Restore registers
 	POP CX
 	POP BX
 	POP AX
