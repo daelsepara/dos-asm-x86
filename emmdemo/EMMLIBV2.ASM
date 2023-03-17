@@ -33,8 +33,8 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 ;
 ; Inputs:
 ;   FAR PTR to Destination Array
-;   SP+6: SEGMENT address of destination array
-;   SP+8:  OFFSET address of destination array
+;   BP+6: SEGMENT address of destination array
+;   BP+8:  OFFSET address of destination array
 ;
 ; Returns:
 ;   On success:
@@ -269,8 +269,8 @@ EMM_OK  ENDP
 ;
 ; Inputs:
 ;   FAR PTR to Destination Array
-;   SP+6: SEGMENT address of destination array
-;   SP+8:  OFFSET address of destination array
+;   BP+6: SEGMENT address of destination array
+;   BP+8:  OFFSET address of destination array
 ;
 ; Returns:
 ;   On success:
@@ -399,7 +399,7 @@ EMM_INFO ENDP
 ; get handle.
 ;
 ; Inputs:
-;	SP+6: Number of pages to allocate (WORD) 
+;	BP+6: Number of pages to allocate (WORD) 
 ;
 ;	On success:
 ;	CF is clear
@@ -488,7 +488,7 @@ EMM_ALLOC ENDP
 ; Frees allocated memory
 ;
 ; Inputs:
-;	SP+6: Page handle to free
+;	BP+6: Page handle to free
 ;
 ;	On success:
 ;	CF is clear
