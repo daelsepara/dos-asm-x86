@@ -75,8 +75,9 @@ EMM_INIT PROC FAR
 	MOV AX, [BP+08H]		; Get user data segment
 	MOV DX, [BP+06H]		; Get user data offset
 
-	PUSH DX					; Pass pointer to user data
-	PUSH AX
+	PUSH AX					; Pass pointer to user data
+	PUSH DX
+	
 	CALL EMM_INFO			; Get EMM Info
 	
 	POP DX					; Restores DX, AX 
@@ -438,12 +439,12 @@ EMM_INFO PROC FAR
 
 	OR AX, AX				; Check if there were errors
 	
-	PUSH DI
-	PUSH DX
-	PUSH BX
-	PUSH AX
-	PUSH ES
-	PUSH DS
+	POP DI
+	POP DX
+	POP BX
+	POP AX
+	POP ES
+	POP DS
 
 	JZ @@OK					; Set CF
 
