@@ -406,8 +406,8 @@ EMM_INFO PROC FAR
 	MOV ES:[DI+OFFSIZE], DX	; Set total number of pages
 	MOV ES:[DI+OFFFREE], BX	; Set total number of unallocated pages
 	
-	MOV AH, 46H
-	INT 67H
+	MOV AH, 46H		; Get EMM version
+	INT 67H			; Returns version number in AL
 
 	OR AH, AH
 	JNZ @@EMSERROR
