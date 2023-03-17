@@ -8,4 +8,4 @@ I am collecting in this repository all my recent experiments with the language, 
 
 - [Expanded Memory Library](emmdemo/README.md)
 
-- [Hello, World in Windos x86 ASM](helloword-windows/README.md)
+- [Hello, World in Windos x86 ASM](helloworld-windows/README.md)
