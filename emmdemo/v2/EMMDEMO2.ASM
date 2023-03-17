@@ -394,43 +394,43 @@ CPRINT PROC FAR
 	MOV BP, SP
 
 	PUSHF
-    PUSH DS                     ; Save registers
-    PUSH AX
-
-    MOV AX, DSEG                ; Set DS to DSEG
-    MOV DS, AX
-
-    MOV AX, ' '
-    PUSH AX                     ; byte used to fill
-    MOV AX, 6
-    PUSH AX                     ; fill up to 6 characters
-    PUSH DS                     ; Buffer segment
-    MOV AX, OFFSET BUFFER       ; Buffer offset
-    PUSH AX
-    CALL FAR PTR FILL           ; clear buffer
-
-    MOV AX, 6                   ; width of buffer
-    PUSH AX
-	MOV AX, [BP+08H]			; Base
-    PUSH AX		
-    MOV AX, [BP+06H]			; Number to convert
+	PUSH DS                     ; Save registers
 	PUSH AX
-    PUSH DS                     ; Buffer segment
-    MOV AX, OFFSET BUFFER       ; Buffer offset
-    PUSH AX
-    CALL FAR PTR CONVERT        ; Convert number
-    
-    PUSH DS
-    PUSH AX
-    CALL FAR PTR PRINT          ; Print converted number
 
-    POP AX						; Restore registers
-    POP DS
+	MOV AX, DSEG                ; Set DS to DSEG
+	MOV DS, AX
+
+	MOV AX, ' '
+	PUSH AX                     ; byte used to fill
+	MOV AX, 6
+	PUSH AX                     ; fill up to 6 characters
+	PUSH DS                     ; Buffer segment
+	MOV AX, OFFSET BUFFER       ; Buffer offset
+	PUSH AX
+	CALL FAR PTR FILL           ; clear buffer
+
+	MOV AX, 6                   ; width of buffer
+	PUSH AX
+	MOV AX, [BP+08H]			; Base
+	PUSH AX		
+	MOV AX, [BP+06H]			; Number to convert
+	PUSH AX
+	PUSH DS                     ; Buffer segment
+	MOV AX, OFFSET BUFFER       ; Buffer offset
+	PUSH AX
+	CALL FAR PTR CONVERT        ; Convert number
+    
+	PUSH DS
+	PUSH AX
+	CALL FAR PTR PRINT          ; Print converted number
+
+	POP AX						; Restore registers
+	POP DS
 	POPF
 
 	POP BP
 
-    RET 4
+	RET 4
 
 CPRINT ENDP
 
