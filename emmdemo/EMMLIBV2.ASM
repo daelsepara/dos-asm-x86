@@ -769,6 +769,7 @@ EMM_MOVE PROC FAR
 	MUL DI					; Base Frame Segment:[Physical Page * 16384]
 	MOV DI, AX
 	
+	CLD
 	REPZ MOVSB				; Copy data to the physical page (expanded memory)
 							; ... This physical page is the portion of
 							; ...  expanded memory that is currently mapped
@@ -885,6 +886,7 @@ EMM_COPY PROC FAR
 	MOV DI, [BP+06H]		; ES:DI
 	MOV ES, DX
 	
+	CLD
 	REPZ MOVSB				; Copy data from physical page to destination buffer
 							; ... This physical page is the portion of 
 							; ... expanded memory that is currently mapped
