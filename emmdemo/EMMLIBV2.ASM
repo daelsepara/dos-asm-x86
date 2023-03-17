@@ -33,8 +33,8 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 ;
 ; Inputs:
 ;   FAR PTR to Destination Array
-;   BP+08: SEGMENT address of destination array
-;   BP+06:  OFFSET address of destination array
+;   BP+06 =  OFFSET address of destination array
+;   BP+08 = SEGMENT address of destination array
 ;
 ; Returns:
 ;   On success:
@@ -72,8 +72,8 @@ EMM_INIT PROC FAR
 	PUSH AX					; Save registers (**)
 	PUSH DX
 
-	MOV AX, [BP + 08H]		; Get user data segment
-	MOV DX, [BP + 06H]		; Get user data offset
+	MOV AX, [BP+08H]		; Get user data segment
+	MOV DX, [BP+06H]		; Get user data offset
 
 	PUSH DX					; Pass pointer to user data
 	PUSH AX
@@ -269,8 +269,8 @@ EMM_OK  ENDP
 ;
 ; Inputs:
 ;   FAR PTR to Destination Array
-;   BP+08: SEGMENT address of destination array
-;   BP+06:  OFFSET address of destination array
+;   BP+06 =  OFFSET address of destination array
+;   BP+08 = SEGMENT address of destination array
 ;
 ; Returns:
 ;   On success:
@@ -306,8 +306,8 @@ EMM_INFO PROC FAR
 	PUSH DX
 	PUSH DI
 
-	MOV AX, [BP + 08H]		; Get user data segment
-	MOV DI, [BP + 06H]		; Get user data offset
+	MOV AX, [BP+08H]		; Get user data segment
+	MOV DI, [BP+06H]		; Get user data offset
 	MOV ES, AX				; Point ES:DI
 							; to user data array
 	
@@ -341,7 +341,6 @@ EMM_INFO PROC FAR
 	MOV ES:[DI+OFFVERS], AL	; Set EMM version
 
 	XOR AX, AX				; No error
-	
 	JMP @@SETCODE
 
 @@EMSERROR:
@@ -399,7 +398,7 @@ EMM_INFO ENDP
 ; get handle.
 ;
 ; Inputs:
-;	BP+6: Number of pages to allocate (WORD) 
+;	BP+06 = Number of pages to allocate (WORD) 
 ;
 ;	On success:
 ;	CF is clear
@@ -451,7 +450,7 @@ EMM_ALLOC PROC FAR
 
 	MOV DS:[EMMCODE], AX
 	
-	OR AX, AX
+	OR AX, AX				; Check for errors
 	
 	MOV AX, DX				; Get handle
 	
@@ -488,7 +487,7 @@ EMM_ALLOC ENDP
 ; Frees allocated memory
 ;
 ; Inputs:
-;	BP+6: Page handle to free
+;	BP+06: Page handle to free
 ;
 ;	On success:
 ;	CF is clear
@@ -531,7 +530,7 @@ EMM_FREE PROC FAR
 	
 	MOV DS:[EMMCODE], AX
 	
-	OR AX, AX
+	OR AX, AX				; Check for errors
 
 	POP DX					; Restore registers
 	POP AX
@@ -567,9 +566,9 @@ EMM_FREE ENDP
 ; Physical page (0-3)
 ;
 ; Inputs:
-;	BP+0A = Physical page 0-3
-;	BP+08 = Logical page (0FFFFH to unmap)
 ;	BP+06 = Handle
+;	BP+08 = Logical page (0FFFFH to unmap)
+;	BP+0A = Physical page 0-3
 ;
 ;	On success:
 ;	CF is clear
@@ -596,8 +595,8 @@ EMM_MAP	PROC FAR
 	MOV DS, AX
 	POP AX
 
-	MOV BX, [BP+08H]		; Get logical page to map/unmap
 	MOV DX, [BP+06H]		; Get handle
+	MOV BX, [BP+08H]		; Get logical page to map/unmap
 	MOV AX, [BP+0AH]		; Get physical page
 
 	MOV AH, 44H				; Map/Unmap logical page
@@ -608,7 +607,7 @@ EMM_MAP	PROC FAR
 
 	MOV DS:[EMMCODE], AX	; Set error code
 	
-	OR AX, AX				; Set CF flag
+	OR AX, AX				; Check for errors
 
 	POP DX
 	POP BX
@@ -638,6 +637,236 @@ EMM_MAP	PROC FAR
 	RET 6
 
 EMM_MAP ENDP
+
+;------ EMM_MOVE -------
+;
+; Copies data into mapped page
+; Assumes Expanded Memory Library was
+; Initialized with EMM_INIT
+;
+; Inputs:
+;   BP+06 =  OFFSET address of source array
+;   BP+08 = SEGMENT address of source array
+;	BP+0A = Physical Page number
+;	BP+0C = Number of Bytes to copy 
+
+	PUBLIC EMM_MOVE
+
+EMM_MOVE PROC FAR
+	
+	PUSH BP
+	MOV BP, SP
+	
+	PUSHF					; Save flags
+
+	PUSH DS					; Save registers
+	PUSH ES
+	PUSH AX
+	PUSH BX
+	PUSH CX
+	PUSH DX
+	PUSH SI
+	PUSH DI
+
+	MOV BX, EMMDSEG
+	MOV ES, BX
+	MOV BX, ES:[EMMBASE]
+
+	OR BX, BX				; Check if EMM Library
+	JZ @@EMSERROR			; was initialized
+
+	MOV AX, [BP+0AH]		; Get physical page
+	CMP AX, 0003H			; and check if out of bounds
+	JA @@INVALID
+	
+	MOV CX, [BP+0CH]
+	OR CX, CX				; Check if there are
+	JZ @@DONE				; bytes to copy
+	
+	MOV DX, [BP+08H]		; Setup source in
+	MOV SI, [BP+06H]		; DS:SI
+	MOV DS, DX
+
+	MOV ES, BX				; Point to EMM Base Page Frame
+	MOV DI, 4000H			; Setup destination:
+	MUL DI					; Base Frame Segment:[Physical Page * 16384]
+	MOV DI, AX
+	
+	REPZ MOVSB				; Copy data to the physical page (expanded memory)
+							; ... This physical page is the portion of
+							; ...  expanded memory that is currently mapped
+							; ... to the physical page
+
+@@DONE:
+	
+	XOR AX, AX				; No errors
+	JMP @@SETCODE
+
+@@INVALID:
+
+	MOV AX, 008BH			; invalid physical page
+	JMP @@SETCODE
+
+@@EMSERROR:
+	
+	MOV AX, 0080H			; Error
+
+@@SETCODE:
+	
+	MOV BX, EMMDSEG			; Setup exit code
+	MOV ES, BX
+	MOV ES:[EMMCODE], AX
+	
+	OR AX, AX				; Check if there were errors
+	
+	POP DI
+	POP SI
+	POP DX
+	POP CX
+	POP BX
+	POP AX
+	POP ES
+	POP DS
+
+	JZ @@OK
+		
+@@ERROR:
+	
+	POPF
+	
+	STC						; Set CF = There were errors
+	
+	JMP @@EXIT
+
+@@OK:
+		
+	POPF
+	
+	CLC						; Clear CF = No Error
+
+@@EXIT:
+
+	POP BP
+
+	RET 8
+
+EMM_MOVE ENDP
+
+;------ EMM_COPY -------
+;
+; Copies data from mapped page
+; into destination buffer in
+; conventional memory
+;
+; Initialized with EMM_INIT
+;
+; Inputs:
+;   BP+06 =  OFFSET address of source array
+;   BP+08 = SEGMENT address of source array
+;	BP+0A = Physical Page number
+;	BP+0C = Number of Bytes to copy 
+
+	PUBLIC EMM_COPY
+
+EMM_COPY PROC FAR
+
+	PUSH BP
+	MOV BP, SP
+	
+	PUSHF					; Save flags
+	
+	PUSH DS					; Save registers
+	PUSH ES
+	PUSH AX
+	PUSH BX
+	PUSH CX
+	PUSH DX
+	PUSH SI
+	PUSH DI
+
+	MOV BX, EMMDSEG
+	MOV ES, BX
+	MOV BX, ES:[EMMBASE]
+
+	OR BX, BX				; Check if EMM Library
+	JZ @@EMSERROR			; was initialized
+
+	MOV AX, [BP+0AH]		; Get physical page
+	CMP AX, 0003H			; Check if AX is out of bounds
+	JA @@INVALID
+	
+	MOV CX, [BP+0CH]
+	OR CX, CX				; Check if there are
+	JZ @@DONE				; bytes to copy
+
+	MOV DS, BX				; Point DS to EMM Base Page Frame Segment
+	MOV SI, 4000H			; Setup Source:
+	MUL SI					; Base Frame Segment:[Physical Page * 16384]
+	MOV SI, AX
+
+	MOV DX, [BP+08H]		; Setup destination in
+	MOV DI, [BP+06H]		; ES:DI
+	MOV ES, DX
+	
+	REPZ MOVSB				; Copy data from physical page to destination buffer
+							; ... This physical page is the portion of 
+							; ... expanded memory that is currently mapped
+							; ... to the physical page
+
+@@DONE:
+	
+	XOR AX, AX				; No errors
+	JMP @@SETCODE
+	
+@@INVALID:
+
+	MOV AX, 008BH			; invalid physical page
+	JMP @@SETCODE
+
+@@EMSERROR:
+	
+	MOV AX, 0080H			; Error
+
+@@SETCODE:
+	
+	MOV BX, EMMDSEG			; Setup exit code
+	MOV ES, BX
+	MOV ES:[EMMCODE], AX
+	
+	OR AX, AX				; Check if there were errors
+	
+	POP DI
+	POP SI
+	POP DX
+	POP CX
+	POP BX
+	POP AX
+	POP ES
+	POP DS
+
+	JZ @@OK
+		
+@@ERROR:
+	
+	POPF
+	
+	STC						; Set CF = There were errors
+	
+	JMP @@EXIT
+
+@@OK:
+		
+	POPF
+	
+	CLC						; Clear CF = No Error
+
+@@EXIT:
+
+	POP BP
+
+	RET 8
+	
+EMM_COPY ENDP
 
 EMMCSEG ENDS
 	
