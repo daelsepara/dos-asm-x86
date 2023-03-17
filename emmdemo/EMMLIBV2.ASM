@@ -33,8 +33,8 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 ;
 ; Inputs:
 ;   FAR PTR to Destination Array
-;   BP+6: SEGMENT address of destination array
-;   BP+8:  OFFSET address of destination array
+;   BP+08: SEGMENT address of destination array
+;   BP+06:  OFFSET address of destination array
 ;
 ; Returns:
 ;   On success:
@@ -104,7 +104,7 @@ EMM_INIT PROC FAR
 
 	POP BP
 	
-	RET 8
+	RET 4
 
 EMM_INIT ENDP
 
@@ -269,8 +269,8 @@ EMM_OK  ENDP
 ;
 ; Inputs:
 ;   FAR PTR to Destination Array
-;   BP+6: SEGMENT address of destination array
-;   BP+8:  OFFSET address of destination array
+;   BP+08: SEGMENT address of destination array
+;   BP+06:  OFFSET address of destination array
 ;
 ; Returns:
 ;   On success:
@@ -389,7 +389,7 @@ EMM_INFO PROC FAR
 
 	POP BP
 
-	RET 8
+	RET 4
 		
 EMM_INFO ENDP
 
@@ -479,7 +479,7 @@ EMM_ALLOC PROC FAR
 
 	POP BP
 
-	RET 4
+	RET 2
 
 EMM_ALLOC ENDP
 
@@ -557,9 +557,87 @@ EMM_FREE PROC FAR
 
 	POP BP
 
-	RET 4
+	RET 2
 
 EMM_FREE ENDP
+
+;------ EMM_MAP -------
+;
+; Maps logical page to
+; Physical page (0-3)
+;
+; Inputs:
+;	BP+0A = Physical page 0-3
+;	BP+08 = Logical page (0FFFFH to unmap)
+;	BP+06 = Handle
+;
+;	On success:
+;	CF is clear
+;
+;	On failure:
+;	CF is set
+
+	PUBLIC EMM_MAP
+
+EMM_MAP	PROC FAR
+
+	PUSH BP
+	MOV BP, SP
+
+	PUSHF					; Save flags
+	
+	PUSH DS					; Save registers
+	PUSH AX
+	PUSH BX
+	PUSH DX
+	
+	PUSH AX					; Point to EMM Data
+	MOV AX, EMMDSEG
+	MOV DS, AX
+	POP AX
+
+	MOV BX, [BP+08H]		; Get logical page to map/unmap
+	MOV DX, [BP+06H]		; Get handle
+	MOV AX, [BP+0AH]		; Get physical page
+
+	MOV AH, 44H				; Map/Unmap logical page
+	INT 67H					; to/from physical page
+
+	MOV AL, AH
+	XOR AH, AH
+
+	MOV DS:[EMMCODE], AX	; Set error code
+	
+	OR AX, AX				; Set CF flag
+
+	POP DX
+	POP BX
+	POP AX
+	POP DS
+
+	JZ @@OK
+		
+@@ERROR:
+	
+	POPF
+	
+	STC						; Set CF = There were errors
+	
+	JMP @@EXIT
+
+@@OK:
+		
+	POPF
+	
+	CLC						; Clear CF = No Error
+
+@@EXIT:
+
+	POP BP
+
+	RET 6
+
+EMM_MAP ENDP
 
 EMMCSEG ENDS
 	
