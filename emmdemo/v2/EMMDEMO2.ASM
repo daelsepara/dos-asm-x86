@@ -38,7 +38,8 @@ EMMFREE	DW 0000H				; Number of unallocated pages
 EMMVERS DB 00H					; EMS Version
 EMMHNDL DW 0000H				; Handle
 TESTSTR DB "EMMDEMO2"			; Test string to copy to expanded memory page
-EMMTEST DB "         read from page 0"	; Buffer string for bytes copied from
+EMMTEST DB "        "			; Buffer string for bytes copied from
+		DB " read from page 0"
         DB NEWLINE				; expanded memory page 0
 NULLSTR	DB 08H DUP (00H)		; 8 NULL bytes used to clear expanded memory page 0
 

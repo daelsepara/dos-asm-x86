@@ -168,7 +168,7 @@ EMM_CHECK PROC FAR
 
 @@SETCODE:
 
-	MOV WORD PTR [EMMCODE], AX	; Save error code
+	MOV DS:[EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check if there were errors
 
@@ -270,7 +270,7 @@ EMM_TEST PROC FAR
 @@SETCODE:
 
 	MOV AX, DX
-	MOV WORD PTR [EMMCODE], AX	; Save error code
+	MOV DS:[EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check if there were errors
 
@@ -335,7 +335,7 @@ EMM_OK	PROC FAR
 
 @@SETCODE:
 
-	MOV WORD PTR [EMMCODE], AX	; Save error code
+	MOV DS:[EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check for errors
 
@@ -420,7 +420,7 @@ EMM_INFO PROC FAR
 	JNZ @@EMSERROR
 
 	MOV ES:[DI+OFFBASE], BX	; Set EMM Page Frame Segment
-	MOV WORD PTR [EMMBASE], BX
+	MOV DS:[EMMBASE], BX
 
 	MOV AH, 42H				; Get Page Counts
 	INT 67H
@@ -449,7 +449,7 @@ EMM_INFO PROC FAR
 	XOR AH, AH
 
 	XOR BX, BX				; Clear EMM Data
-	MOV WORD PTR [EMMBASE], BX
+	MOV DS:[EMMBASE], BX
 	MOV ES:[DI+OFFBASE], BX
 	MOV ES:[DI+OFFSIZE], BX
 	MOV ES:[DI+OFFFREE], BX
@@ -457,7 +457,7 @@ EMM_INFO PROC FAR
 
 @@SETCODE:
 
-	MOV WORD PTR [EMMCODE], AX	; Save error code
+	MOV DS:[EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check if there were errors
 
@@ -550,7 +550,7 @@ EMM_ALLOC PROC FAR
 
 @@SETCODE:
 
-	MOV WORD PTR [EMMCODE], AX	; Save error code
+	MOV DS:[EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check for errors
 
@@ -631,7 +631,7 @@ EMM_FREE PROC FAR
 
 @@SETCODE:
 
-	MOV WORD PTR [EMMCODE], AX	; Save error code
+	MOV DS:[EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check for errors
 
@@ -706,7 +706,7 @@ EMM_MAP	PROC FAR
 	MOV AL, AH				; Copy EMS error code
 	XOR AH, AH
 
-	MOV WORD PTR [EMMCODE], AX	; Set error code
+	MOV DS:[EMMCODE], AX	; Set error code
 
 	OR AX, AX				; Check for errors
 
@@ -780,7 +780,7 @@ EMM_COPY PROC FAR
 
 	MOV DX, EMMDSEG
 	MOV DS, DX
-	MOV DX, WORD PTR [EMMBASE]	; Get EMM Base Page Frame segment
+	MOV DX, DS:[EMMBASE]	; Get EMM Base Page Frame segment
 
 	OR DX, DX				; Check if EMM Library
 	JZ @@ABRT01				; was initialized
@@ -871,7 +871,7 @@ EMM_COPY PROC FAR
 
 	MOV DX, EMMDSEG			; Save error code
 	MOV DS, DX
-	MOV WORD PTR [EMMCODE], AX
+	MOV DS:[EMMCODE], AX
 
 	OR AX, AX				; Check if there were errors
 
