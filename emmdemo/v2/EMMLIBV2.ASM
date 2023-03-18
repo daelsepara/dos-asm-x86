@@ -152,7 +152,7 @@ EMM_CHECK PROC FAR
 
 @@SETCODE:
 
-	MOV DS:[EMMCODE], AX	; Save error code
+	MOV WORD PTR [EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check if there were errors
 
@@ -254,7 +254,7 @@ EMM_TEST PROC FAR
 @@SETCODE:
 
 	MOV AX, DX
-	MOV DS:[EMMCODE], AX	; Save error code
+	MOV WORD PTR [EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check if there were errors
 
@@ -319,7 +319,7 @@ EMM_OK	PROC FAR
 
 @@SETCODE:
 
-	MOV DS:[EMMCODE], AX	; Save error code
+	MOV WORD PTR [EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check for errors
 
@@ -404,7 +404,7 @@ EMM_INFO PROC FAR
 	JNZ @@EMSERROR
 
 	MOV ES:[DI+OFFBASE], BX	; Set EMM Page Frame Segment
-	MOV DS:[EMMBASE], BX		
+	MOV WORD PTR [EMMBASE], BX		
 
 	MOV AH, 42H				; Get Page Counts
 	INT 67H
@@ -433,7 +433,7 @@ EMM_INFO PROC FAR
 	XOR AH, AH
 
 	XOR BX, BX				; Clear EMM Data
-	MOV DS:[EMMBASE], BX
+	MOV WORD PTR [EMMBASE], BX
 	MOV ES:[DI+OFFBASE], BX
 	MOV ES:[DI+OFFSIZE], BX
 	MOV ES:[DI+OFFFREE], BX
@@ -441,7 +441,7 @@ EMM_INFO PROC FAR
 
 @@SETCODE:
 
-	MOV DS:[EMMCODE], AX	; Save error code
+	MOV WORD PTR [EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check if there were errors
 
@@ -534,7 +534,7 @@ EMM_ALLOC PROC FAR
 
 @@SETCODE:
 
-	MOV DS:[EMMCODE], AX	; Save error code
+	MOV WORD PTR [EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check for errors
 
@@ -615,7 +615,7 @@ EMM_FREE PROC FAR
 
 @@SETCODE:
 
-	MOV DS:[EMMCODE], AX	; Save error code
+	MOV WORD PTR [EMMCODE], AX	; Save error code
 
 	OR AX, AX				; Check for errors
 
@@ -690,7 +690,7 @@ EMM_MAP	PROC FAR
 	MOV AL, AH				; Copy EMS error code
 	XOR AH, AH
 
-	MOV DS:[EMMCODE], AX	; Set error code
+	MOV WORD PTR [EMMCODE], AX	; Set error code
 
 	OR AX, AX				; Check for errors
 
@@ -723,21 +723,37 @@ EMM_MAP	PROC FAR
 
 EMM_MAP ENDP
 
-;------ EMM_PUT -------
+;------ EMM_COPY -------
 ;
-; Copies data into mapped page
+; Copies data to conventional into mapped page
+; and/or vice versa, depending on direction
+;
 ; Assumes Expanded Memory Library was
 ; Initialized with EMM_INIT
 ;
+; NOTE: Must be called from within EMM_PUT/EMM_GET
+; or it will result in a catastrophic crash without
+; some additional stack manipulation
+;
 ; Inputs:
-;	BP+06 =  OFFSET address of source array
-;	BP+08 = SEGMENT address of source array
-;	BP+0A = Physical Page number
-;	BP+0C = Number of Bytes to copy 
+;	BP+0E =  OFFSET address of source/destination array
+;	BP+10 = SEGMENT address of source/destination array
+;	BP+12 = Physical Page number
+;	BP+14 = Number of Bytes to copy 
+;	BP+06 = Direction
+;	      = if == 0 conventional to expanded mem
+;	      = if != 0 expanded mem to conventional
 
-	PUBLIC EMM_PUT
+	PUBLIC EMM_COPY
 
-EMM_PUT PROC FAR
+EMMPAGE EQU 4000H			; Page size (16384 bytes)
+COPYDIR EQU [BP+06H]		; Copy direction
+OFFDATA EQU [BP+0EH]		; Offset address of data
+SEGDATA EQU [BP+10H]		; Segment address of data
+PHYPAGE EQU [BP+12H]		; Physical page
+CPYSIZE EQU [BP+14H]		; Number of bytes to copy
+
+EMM_COPY PROC FAR
 
 	PUSH BP
 	MOV BP, SP
@@ -747,6 +763,7 @@ EMM_PUT PROC FAR
 	PUSH DS					; Save registers
 	PUSH ES
 	PUSH AX
+	PUSH BX
 	PUSH CX
 	PUSH DX
 	PUSH SI
@@ -754,34 +771,76 @@ EMM_PUT PROC FAR
 
 	MOV DX, EMMDSEG
 	MOV DS, DX
-	MOV DX, DS:[EMMBASE]	; Get EMM Base Page Frame segment
+	MOV DX, WORD PTR [EMMBASE]	; Get EMM Base Page Frame segment
 
 	OR DX, DX				; Check if EMM Library
-	JZ @@EMSERROR			; was initialized
+	JZ @@ABRT01				; was initialized
+	
+	JMP @@MOVE01
 
-	MOV AX, [BP+0AH]		; Get physical page
+@@ABRT01:
+
+	JMP @@EMSERROR
+
+@@MOVE01:
+
+	MOV AX, PHYPAGE			; Get physical page
 
 	CMP AX, 0003H			; Check if out of bounds
-	JA @@INVALID
+	JA @@ABRT02
 
-	MOV CX, [BP+0CH]
+	JMP @@MOVE02
+
+@@ABRT02:
+
+	JMP @@INVALID
+
+@@MOVE02:
+
+	MOV CX, CPYSIZE
 	OR CX, CX				; Check if there are
-	JZ @@DONE				; bytes to copy
+	JZ @@STOPIT				; bytes to copy
+
+	JMP @@MOVE03
+
+@@STOPIT:
+
+	JMP @@DONE
+
+@@MOVE03:
+
+	MOV BX, COPYDIR			; check direction
+	OR BX, BX
+	JNZ @@EMMTOCON
+
+@@CONTOEMM:
 
 	MOV ES, DX				; Point ES to EMM Base Page Frame segment
-	MOV DI, 4000H			; ES:DI = ES:[Physical Page * 16384]
+	MOV DI, EMMPAGE			; ES:DI = ES:[Physical Page * 16384]
 	MUL DI
 	MOV DI, AX
 
-	MOV DX, [BP+08H]		; Set DS:SI to source buffer address
-	MOV SI, [BP+06H]
+	MOV DX, SEGDATA			; Set DS:SI to source buffer address
+	MOV SI, OFFDATA			; in conventional memory
 	MOV DS, DX
 
+	JMP @@MOVE
+
+@@EMMTOCON:
+
+	MOV DS, DX				; Point DS to EMM Base Page Frame Segment
+	MOV SI, EMMPAGE			; DS:SI = DS:[Physical Page * 16384]
+	MUL SI
+	MOV SI, AX
+
+	MOV DX, SEGDATA			; Set ES:DI to destination address
+	MOV DI, OFFDATA			; in conventional memory
+	MOV ES, DX
+
+@@MOVE:
+
 	CLD
-	REPZ MOVSB				; Copy data to the physical page (expanded memory)
-							; ... This physical page is the portion of
-							; ...  expanded memory that is currently mapped
-							; ... to the physical page
+	REPZ MOVSB				; Copy data
 
 @@DONE:
 
@@ -803,7 +862,7 @@ EMM_PUT PROC FAR
 
 	MOV DX, EMMDSEG			; Save error code
 	MOV DS, DX
-	MOV DS:[EMMCODE], AX
+	MOV WORD PTR [EMMCODE], AX
 
 	OR AX, AX				; Check if there were errors
 
@@ -811,6 +870,7 @@ EMM_PUT PROC FAR
 	POP SI
 	POP DX
 	POP CX
+	POP BX
 	POP AX
 	POP ES
 	POP DS
@@ -834,6 +894,34 @@ EMM_PUT PROC FAR
 @@EXIT:
 
 	POP BP
+
+	RET 2
+
+EMM_COPY ENDP
+
+;------ EMM_PUT -------
+;
+; Copies data to mapped page
+; Assumes Expanded Memory Library was
+; Initialized with EMM_INIT
+;
+; Inputs:
+;	BP+06 =  OFFSET address of source array
+;	BP+08 = SEGMENT address of source array
+;	BP+0A = Physical Page number
+;	BP+0C = Number of Bytes to copy 
+
+	PUBLIC EMM_PUT
+
+EMM_PUT PROC FAR
+
+	PUSH AX					; Save AX
+	
+	XOR AX, AX				; Copy
+	PUSH AX
+	CALL FAR PTR EMM_COPY
+	
+	POP AX					; Restore AX
 
 	RET 8
 
@@ -858,101 +946,13 @@ EMM_PUT ENDP
 
 EMM_GET PROC FAR
 
-	PUSH BP
-	MOV BP, SP
-
-	PUSHF					; Save flags
-
-	PUSH DS					; Save registers
-	PUSH ES
+	PUSH AX					; Save AX
+	
+	MOV AX, 0FFFFH			; Copy
 	PUSH AX
-	PUSH CX
-	PUSH DX
-	PUSH SI
-	PUSH DI
-
-	MOV DX, EMMDSEG
-	MOV DS, DX
-	MOV DX, DS:[EMMBASE]
-
-	OR DX, DX				; Check if EMM Library
-	JZ @@EMSERROR			; was initialized
-
-	MOV AX, [BP+0AH]		; Get physical page
-
-	CMP AX, 0003H			; Check if AX is out of bounds
-	JA @@INVALID
+	CALL FAR PTR EMM_COPY
 	
-	MOV CX, [BP+0CH]
-	OR CX, CX				; Check if there are
-	JZ @@DONE				; bytes to copy
-
-	MOV DS, DX				; Point DS to EMM Base Page Frame Segment
-	MOV SI, 4000H			; DS:SI = DS:[Physical Page * 16384]
-	MUL SI
-	MOV SI, AX
-
-	MOV DX, [BP+08H]		; Set ES:DI to destination address
-	MOV DI, [BP+06H]
-	MOV ES, DX
-
-	CLD
-	REPZ MOVSB				; Copy data from physical page to destination buffer
-							; ... This physical page is the portion of 
-							; ... expanded memory that is currently mapped
-							; ... to the physical page
-
-@@DONE:
-	
-	XOR AX, AX				; No errors
-
-	JMP @@SETCODE
-
-@@INVALID:
-
-	MOV AX, 008BH			; invalid physical page
-
-	JMP @@SETCODE
-
-@@EMSERROR:
-
-	MOV AX, 0080H			; Error
-
-@@SETCODE:
-
-	MOV DX, EMMDSEG			; Save error code
-	MOV DS, DX
-	MOV DS:[EMMCODE], AX
-
-	OR AX, AX				; Check if there were errors
-
-	POP DI
-	POP SI
-	POP DX
-	POP CX
-	POP AX
-	POP ES
-	POP DS
-
-	JZ @@OK
-
-@@ERROR:
-
-	POPF
-
-	STC						; Set CF = There were errors
-
-	JMP @@EXIT
-
-@@OK:
-
-	POPF
-
-	CLC						; Clear CF = No Error
-
-@@EXIT:
-
-	POP BP
+	POP AX					; Restore AX
 
 	RET 8
 
