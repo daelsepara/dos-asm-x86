@@ -1156,7 +1156,7 @@ EMM_GET PROC FAR
 
 	PUSH AX					; Save AX
 
-	MOV AX, 0FFFFH			; Copy Ffrom expanded memory
+	MOV AX, 0FFFFH			; Copy from expanded memory
 	PUSH AX					; to conventional memory
 	CALL FAR PTR EMM_COPY
 
