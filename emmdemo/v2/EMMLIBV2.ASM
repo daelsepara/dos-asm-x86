@@ -14,6 +14,22 @@ EMMDSEG ENDS
 
 INCLUDE EMMCONST.INC
 
+EMMPAGE EQU 4000H			; Page size (16384 bytes)
+
+; BP-indices used to reference parameters on the stack
+BUFFOFF EQU [BP+06H]		; Offset address of buffer
+BUFFSEG EQU [BP+08H]		; Segment address of buffer
+EMHANDL EQU [BP+06H]		; Expanded Memory Handle
+LOGPAGE EQU [BP+08H]		; Logical page
+PHYPAGE EQU [BP+0AH]		; Physical page
+
+; BP-indices used by EMM_COPY
+COPYDIR EQU [BP+06H]		; Copy direction
+OFFDATA EQU [BP+0EH]		; Offset address of data
+SEGDATA EQU [BP+10H]		; Segment address of data
+CPYPAGE EQU [BP+12H]		; Physical page
+CPYSIZE EQU [BP+14H]		; Number of bytes to copy
+
 EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 	ASSUME CS:EMMCSEG, DS:EMMDSEG
 
@@ -70,8 +86,8 @@ EMM_INIT PROC FAR
 	PUSH AX					; Save registers (**)
 	PUSH DX
 
-	MOV AX, [BP+08H]		; segment address of user data
-	MOV DX, [BP+06H]		; offset address of user data
+	MOV AX, BUFFSEG			; segment address of user data
+	MOV DX, BUFFOFF			; offset address of user data
 	PUSH AX					; Pass user data address
 	PUSH DX
 
@@ -389,8 +405,8 @@ EMM_INFO PROC FAR
 	PUSH DX
 	PUSH DI
 
-	MOV AX, [BP+08H]		; Get user data segment
-	MOV DI, [BP+06H]		; Get user data offset
+	MOV AX, BUFFSEG			; Get user data segment
+	MOV DI, BUFFOFF			; Get user data offset
 	MOV ES, AX				; Point ES:DI
 							; to user data array
 
@@ -597,7 +613,7 @@ EMM_FREE PROC FAR
 	MOV AX, EMMDSEG			; Point to EMM Data
 	MOV DS, AX
 
-	MOV DX, [BP+06H]		; De-allocate handle
+	MOV DX, EMHANDL			; De-allocate handle
 	MOV AH, 45H				; ... and memory
 	INT 67H					; ... in DX
 
@@ -680,9 +696,9 @@ EMM_MAP	PROC FAR
 	MOV AX, EMMDSEG			; Point to EMM Lib
 	MOV DS, AX				; data segment
 
-	MOV DX, [BP+06H]		; Get handle
-	MOV BX, [BP+08H]		; Get logical page to map/unmap
-	MOV AX, [BP+0AH]		; Get physical page
+	MOV DX, EMHANDL			; Get handle
+	MOV BX, LOGPAGE			; Get logical page to map/unmap
+	MOV AX, PHYPAGE			; Get physical page
 
 	MOV AH, 44H				; Map/Unmap logical page
 	INT 67H					; to/from physical page
@@ -746,13 +762,6 @@ EMM_MAP ENDP
 
 	PUBLIC EMM_COPY
 
-EMMPAGE EQU 4000H			; Page size (16384 bytes)
-COPYDIR EQU [BP+06H]		; Copy direction
-OFFDATA EQU [BP+0EH]		; Offset address of data
-SEGDATA EQU [BP+10H]		; Segment address of data
-PHYPAGE EQU [BP+12H]		; Physical page
-CPYSIZE EQU [BP+14H]		; Number of bytes to copy
-
 EMM_COPY PROC FAR
 
 	PUSH BP
@@ -784,7 +793,7 @@ EMM_COPY PROC FAR
 
 @@MOVE01:
 
-	MOV AX, PHYPAGE			; Get physical page
+	MOV AX, CPYPAGE			; Get physical page
 
 	CMP AX, 0003H			; Check if out of bounds
 	JA @@ABRT02

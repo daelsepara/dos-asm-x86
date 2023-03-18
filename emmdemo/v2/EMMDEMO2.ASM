@@ -44,6 +44,14 @@ NULLSTR	DB 08H DUP (00H)		; 8 NULL bytes used to clear expanded memory page 0
 
 DSEG ENDS
 
+; BP-indices used to reference parameters on the stack
+BUFFOFF EQU [BP+06H]			; Offset address of buffer
+BUFFSEG EQU [BP+08H]			; Segment address of buffer
+CONVBAS EQU [BP+08H]			; Number base
+CONVNUM EQU [BP+06H]			; Number to convert
+INFOBAS EQU [BP+0CH]			; Number base
+INFONUM EQU [BP+0AH]			; Number to convert
+
 CSEG SEGMENT PARA PUBLIC 'CODE'
 	ASSUME CS:CSEG, DS:DSEG
 
@@ -421,9 +429,9 @@ CPRINT PROC FAR
 
 	MOV AX, 6
 	PUSH AX						; width of buffer
-	MOV AX, [BP+08H]
+	MOV AX, CONVBAS
 	PUSH AX						; Base
-	MOV AX, [BP+06H]
+	MOV AX, CONVNUM
 	PUSH AX						; Number to convert
 	MOV AX, OFFSET BUFFER
 	PUSH DS                     ; pointer to buffer
@@ -464,15 +472,15 @@ INFO PROC FAR
 	PUSHF						; Save flags
 	PUSH AX						; Save registers
 
-	MOV AX, [BP+0CH]			; Get base
+	MOV AX, INFOBAS				; Get base
 	PUSH AX
-	MOV AX, [BP+0AH]			; Get number to convert
+	MOV AX, INFONUM				; Get number to convert
 	PUSH AX
 	CALL FAR PTR CPRINT			; Convert and print number
 
-	MOV AX, [BP+08H]			; segment address of caption string
+	MOV AX, BUFFSEG				; segment address of caption string
 	PUSH AX
-	MOV AX, [BP+06H]			; offset address of caption string
+	MOV AX, BUFFOFF				; offset address of caption string
 	PUSH AX
 	CALL FAR PTR PRINT			; Print caption string
 
