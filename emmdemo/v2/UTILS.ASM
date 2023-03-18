@@ -1,4 +1,6 @@
+;----------------------------------------------------------------------
 ; Utilities
+;----------------------------------------------------------------------
 ;
 ; Library with "High-Level" calling interface
 
@@ -6,6 +8,9 @@
 
 	TITLE UTILS
 
+;----------------------------------------------------------------------
+; CODE SEGMENT
+;----------------------------------------------------------------------
 UTILS SEGMENT PARA PUBLIC 'CODE'
 	ASSUME CS:UTILS, DS:UTILS, ES:UTILS
 
@@ -19,7 +24,18 @@ UTILS SEGMENT PARA PUBLIC 'CODE'
 ;    a) AX = 16bit value / Near Pointer
 ;    b) DX:AX = 32bit value / Far pointer
 
+;----------------------------------------------------------------------
+; DOS Standard/Default handles
+;----------------------------------------------------------------------
+STDIN	EQU 0			; Standard Input Device - can be redirected (STDIN)
+STDOUT	EQU 1			; Standard Output Device - can be redirected (STDOUT)
+STDERR	EQU 2			; Standard Error Device - can be redirected (STDERR)
+STDAUX	EQU 3			; Standard Auxiliary Device (STDAUX)
+STDPRN	EQU 4			; Standard Printer Device (STDPRN)
+
+;----------------------------------------------------------------------
 ; BP-indices used to reference parameters on the stack
+;----------------------------------------------------------------------
 BUFFOFF EQU [BP+06H] ; Offset address of buffer
 BUFFSEG EQU [BP+08H] ; Segment address of buffer
 BUFFLEN EQU [BP+0EH] ; Length of the buffer
@@ -28,7 +44,9 @@ CONVBAS EQU [BP+0CH] ; Base to convert CONVNUM in
 COUNTCH EQU [BP+0AH] ; number of bytes to fill
 CHRFILL EQU [BP+0CH] ; byte used to fill buffer
 
-; ------ FILL ------
+;----------------------------------------------------------------------
+; FILL
+;----------------------------------------------------------------------
 ;
 ; Fill buffer
 ;
@@ -46,11 +64,15 @@ FILL PROC FAR
 	PUSH BP
 	MOV BP, SP
 
+;----------------------------------------------------------------------
+
 	PUSHF				; Save registers
 	PUSH ES
 	PUSH AX
 	PUSH CX
 	PUSH DI
+
+;----------------------------------------------------------------------
 
 	MOV AX, BUFFSEG
 	MOV ES, AX			; Set ES:DI to
@@ -62,11 +84,15 @@ FILL PROC FAR
 	CLD
 	REPZ STOSB
 
+;----------------------------------------------------------------------
+
 	POP DI				; Restore registers
 	POP CX
 	POP AX
 	POP ES
 	POPF
+
+;----------------------------------------------------------------------
 
 	POP BP
 
@@ -74,7 +100,9 @@ FILL PROC FAR
 
 FILL ENDP
 
-;------ CONVERT ------
+;----------------------------------------------------------------------
+; CONVERT
+;----------------------------------------------------------------------
 ;
 ; Convert number to string in buffer
 ;
@@ -92,12 +120,16 @@ CONVERT PROC FAR
 	PUSH BP
 	MOV BP, SP
 
+;----------------------------------------------------------------------
+
 	PUSHF				; Save registers
 	PUSH ES
 	PUSH AX
 	PUSH CX
 	PUSH DX
 	PUSH DI
+
+;----------------------------------------------------------------------
 
 	MOV AX, BUFFSEG		; Get buffer segment
 	MOV ES, AX
@@ -111,6 +143,7 @@ CONVERT PROC FAR
 	MOV AX, CONVNUM		; Get number
 	MOV CX, CONVBAS		; Get base
 
+;----------------------------------------------------------------------
 @@LOOP:
 
 	XOR DX, DX			; Clear upper half of 32bit number in DX:AX
@@ -122,20 +155,25 @@ CONVERT PROC FAR
 	ADD DL, '0'			; Convert digit to ASCII equivalent
 	JMP @@STORE
 
+;----------------------------------------------------------------------
 @@FIX:
 
 	ADD DL, 37H			; Convert digit to A-Z
 
+;----------------------------------------------------------------------
 @@STORE:
 
 	MOV ES:[DI], DL		; Store in buffer then move to next location
 	DEC DI
+
+;----------------------------------------------------------------------
 
 	OR AX, AX			; Check if there are any digits left to convert
 	JZ @@END
 
 	JMP @@LOOP
 
+;----------------------------------------------------------------------
 @@END:
 
 	POP DI				; Restore registers
@@ -145,13 +183,17 @@ CONVERT PROC FAR
 	POP ES
 	POPF
 
+;----------------------------------------------------------------------
+
 	POP BP
 
 	RET 10
 
 CONVERT ENDP
 
-;------ STRLEN ------
+;----------------------------------------------------------------------
+; STRLEN
+;----------------------------------------------------------------------
 ;
 ; Get string length
 ;
@@ -170,10 +212,14 @@ STRLEN PROC FAR
 	PUSH BP
 	MOV BP, SP
 
+;----------------------------------------------------------------------
+
 	PUSHF				; Save registers
 	PUSH ES
 	PUSH CX
 	PUSH DI
+
+;----------------------------------------------------------------------
 
 	MOV AX, BUFFSEG		; get string buffer segment
 	MOV DI, BUFFOFF		; get string buffer offset
@@ -182,24 +228,34 @@ STRLEN PROC FAR
 	XOR AX, AX			; Scan for end of string (NULL = 00H)
 	XOR CX, CX			; Initialize string length
 
+;----------------------------------------------------------------------
+
 	CLD					; Search in Forward direction
 
+;----------------------------------------------------------------------
 @@LOOP:
 
 	SCASB
 	JZ @@EXIT
 
+;----------------------------------------------------------------------
+
 	INC CX				; String length in CX
 	JMP @@LOOP
 
+;----------------------------------------------------------------------
 @@EXIT:
 
 	MOV AX, CX			; Copy string length to AX
+
+;----------------------------------------------------------------------
 
 	POP DI				; Restore registers
 	POP CX
 	POP ES
 	POPF
+
+;----------------------------------------------------------------------
 
 	POP BP
 
@@ -207,7 +263,9 @@ STRLEN PROC FAR
 
 STRLEN ENDP
 
-;------ PRINT ------
+;----------------------------------------------------------------------
+; PRINT
+;----------------------------------------------------------------------
 ;
 ; Prints string. Uses DOS's write
 ; to file service (INT 21H AH=40H)
@@ -219,16 +277,12 @@ STRLEN ENDP
 
 	PUBLIC PRINT
 
-STDIN	EQU 0			; Standard Input Device - can be redirected (STDIN)
-STDOUT	EQU 1			; Standard Output Device - can be redirected (STDOUT)
-STDERR	EQU 2			; Standard Error Device - can be redirected (STDERR)
-STDAUX	EQU 3			; Standard Auxiliary Device (STDAUX)
-STDPRN	EQU 4			; Standard Printer Device (STDPRN)
-
 PRINT PROC FAR
 
 	PUSH BP
 	MOV BP, SP
+
+;----------------------------------------------------------------------
 
 	PUSHF				; Save registers
 	PUSH DS
@@ -237,24 +291,33 @@ PRINT PROC FAR
 	PUSH CX
 	PUSH DX
 
+;----------------------------------------------------------------------
+
 	MOV AX, BUFFSEG		; get string buffer segment
 	PUSH AX
 	MOV AX, BUFFOFF		; get string buffer offset
 	PUSH AX
 	CALL FAR PTR STRLEN	; Get string length
 
+;----------------------------------------------------------------------
+
 	OR AX, AX			; Check if there are
 	JZ @@EXIT			; characters to print
+
+;----------------------------------------------------------------------
 
 	MOV CX, AX			; Copy length to CX
 	MOV AX, BUFFSEG		; get string buffer segment
 	MOV DX, BUFFOFF		; get string buffer offset
 	MOV DS, AX			; Point DS:DX to string buffer
 
+;----------------------------------------------------------------------
+
 	MOV AH, 40H			; Print using DOS service
 	MOV BX, STDOUT		; Print to STDOUT
 	INT 21H
 
+;----------------------------------------------------------------------
 @@EXIT:
 
 	POP DX				; Restore registers
@@ -263,6 +326,8 @@ PRINT PROC FAR
 	POP AX
 	POP DS
 	POPF
+
+;----------------------------------------------------------------------
 
 	POP BP
 
@@ -273,3 +338,7 @@ PRINT ENDP
 UTILS ENDS
 
 	END
+
+;----------------------------------------------------------------------
+; END OF UTILS
+;----------------------------------------------------------------------

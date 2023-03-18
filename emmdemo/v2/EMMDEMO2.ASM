@@ -1,4 +1,6 @@
+;----------------------------------------------------------------------
 ; Expanded Memory Manager Demo v2.0
+;----------------------------------------------------------------------
 ;
 ; Uses EMM Library v2.0, Utils
 
@@ -9,6 +11,9 @@
 	.MODEL SMALL
 	.STACK 0400H				; Increased stack stize
 
+;----------------------------------------------------------------------
+; DATA SEGMENT
+;----------------------------------------------------------------------
 DSEG SEGMENT PARA PUBLIC 'DATA'
 
 NEWLINE	EQU 0AH, 0DH, 00H		; New line
@@ -45,7 +50,9 @@ NULLSTR	DB 08H DUP (00H)		; 8 NULL bytes used to clear expanded memory page 0
 
 DSEG ENDS
 
+;----------------------------------------------------------------------
 ; BP-indices used to reference parameters on the stack
+;----------------------------------------------------------------------
 BUFFOFF EQU [BP+06H]			; Offset address of buffer
 BUFFSEG EQU [BP+08H]			; Segment address of buffer
 CONVBAS EQU [BP+08H]			; Number base
@@ -53,19 +60,24 @@ CONVNUM EQU [BP+06H]			; Number to convert
 INFOBAS EQU [BP+0CH]			; Number base
 INFONUM EQU [BP+0AH]			; Number to convert
 
+;----------------------------------------------------------------------
+; CODE SEGMENT
+;----------------------------------------------------------------------
 CSEG SEGMENT PARA PUBLIC 'CODE'
 	ASSUME CS:CSEG, DS:DSEG
 
-;------ EMMDEMO2 ------
+	EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR, EMM_MAP:FAR, EMM_PUT:FAR, EMM_GET:FAR
+	EXTRN FILL:FAR, STRLEN:FAR, CONVERT:FAR, PRINT:FAR
+
+;----------------------------------------------------------------------
+; EMMDEMO2
+;----------------------------------------------------------------------
 ;
 ; Initialized EMM then prints
 ; Base frame and available
 ; Expanded memory
 
 	PUBLIC EMMDEMO2
-
-	EXTRN EMM_INIT:FAR, EMM_ALLOC:FAR, EMM_FREE:FAR, EMM_MAP:FAR, EMM_PUT:FAR, EMM_GET:FAR
-	EXTRN FILL:FAR, STRLEN:FAR, CONVERT:FAR, PRINT:FAR
 
 EMMDEMO2 PROC FAR
 
@@ -81,15 +93,20 @@ EMMDEMO2 PROC FAR
 	JB @@ABRT00					; Exit on error
 	JMP @@MAIN00				; On success:
 								; EMM Info in:
-								; DSEG:EMMBASE = Page frame
-								; DSEG:EMMSIZE = Total pages
-								; DSEG:EMMFREE = Unallocated pages
-                            	; DSEG:EMMVERS = EMS Version number
+								; DS:[EMMBASE] = Page frame
+								; DS:[EMMSIZE] = Total pages
+								; DS:[EMMFREE] = Unallocated pages
+                            	; DS:[EMMVERS] = EMS Version number
+
 @@ABRT00:
 
 	JMP  @@NOEMM				; NOEMM is beyond a SHORT jump
 								; ... so we JMP short to @@ABORT
 								; ... then JMP to @NOEMM
+								; This pattern is repeated
+								; ... multiple times in this code
+
+;----------------------------------------------------------------------
 @@MAIN00:
 
 	CALL @@NEWL
@@ -139,6 +156,8 @@ EMMDEMO2 PROC FAR
 	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
 
+;----------------------------------------------------------------------
+
 	MOV AX, DS:[EMMFREE]		; Check if we have enough memory
 	CMP AX, ALLOC
 
@@ -149,6 +168,7 @@ EMMDEMO2 PROC FAR
 
 	JMP @@LESS
 
+;----------------------------------------------------------------------
 @@MAIN01:
 
 	MOV AX, ALLOC				; Allocate pages
@@ -182,6 +202,8 @@ EMMDEMO2 PROC FAR
 	PUSH DX
 	CALL FAR PTR PRINT
 
+;----------------------------------------------------------------------
+
 	XOR AX, AX
 	PUSH AX						; Push Physical Page 0 to stack
 	PUSH AX						; Push Logical Page 0 to stack
@@ -204,6 +226,7 @@ EMMDEMO2 PROC FAR
 	PUSH DX
 	CALL FAR PTR PRINT
 
+;----------------------------------------------------------------------
 @@ABRT04:
 @@MAIN04:
 
@@ -219,6 +242,8 @@ EMMDEMO2 PROC FAR
 								; ... one page at a time
 
 	JB @@ABRT05
+
+;----------------------------------------------------------------------
 
 	MOV AX, 8
 	PUSH AX						; Copies 8 bytes of test string to page 0
@@ -236,6 +261,7 @@ EMMDEMO2 PROC FAR
 
 	JMP @@INIT					; EMM Library was not initialized
 
+;----------------------------------------------------------------------
 @@MAIN05:
 
 	MOV AX, 8					; Copy 8 bytes from page 0
@@ -263,6 +289,8 @@ EMMDEMO2 PROC FAR
 	PUSH DX
 	CALL FAR PTR PRINT
 
+;----------------------------------------------------------------------
+
 	XOR AX, AX
 	PUSH AX						; Physical page 0
 	MOV BX, 0FFFFH				; Unmap Page
@@ -286,6 +314,8 @@ EMMDEMO2 PROC FAR
 	PUSH DX
 	CALL FAR PTR PRINT
 
+;----------------------------------------------------------------------
+
 	MOV AX, DS:[EMMHNDL]		; Get handle
 	PUSH AX
 	CALL EMM_FREE				; Free allocated expanded memory
@@ -305,11 +335,14 @@ EMMDEMO2 PROC FAR
 	PUSH DX
 	CALL FAR PTR PRINT
 
+;----------------------------------------------------------------------
 @@OK:
 
 	MOV AX, 4C00H				; Set exit code to 0
+
 	JMP @@EXIT
 
+;----------------------------------------------------------------------
 @@NEWL LABEL NEAR
 
 	MOV DX, OFFSET SENDL		; Prints a newline character
@@ -319,6 +352,7 @@ EMMDEMO2 PROC FAR
 
 	RETN
 
+;----------------------------------------------------------------------
 @@LESS:
 
 	CALL @@NEWL
@@ -329,6 +363,7 @@ EMMDEMO2 PROC FAR
 
 	JMP @@ERROR
 
+;----------------------------------------------------------------------
 @@FAIL:
 
 	CALL @@NEWL
@@ -339,6 +374,7 @@ EMMDEMO2 PROC FAR
 
 	JMP @@ERROR
 
+;----------------------------------------------------------------------
 @@NOMAP:
 
 	CALL @@NEWL
@@ -349,6 +385,7 @@ EMMDEMO2 PROC FAR
 
 	JMP @@ERROR
 
+;----------------------------------------------------------------------
 @@INIT:
 
 	CALL @@NEWL
@@ -359,6 +396,7 @@ EMMDEMO2 PROC FAR
 
 	JMP @@ERROR
 
+;----------------------------------------------------------------------
 @@LEAK:
 
 	CALL @@NEWL
@@ -369,6 +407,7 @@ EMMDEMO2 PROC FAR
 
 	JMP @@ERROR
 
+;----------------------------------------------------------------------
 @@NOUNMAP:
 
 	CALL @@NEWL
@@ -379,6 +418,7 @@ EMMDEMO2 PROC FAR
 
 	JMP @@ERROR
 
+;----------------------------------------------------------------------
 @@NOEMM:
 
 	CALL @@NEWL
@@ -387,17 +427,21 @@ EMMDEMO2 PROC FAR
 	PUSH DX
 	CALL FAR PTR PRINT
 
+;----------------------------------------------------------------------
 @@ERROR:
 
 	MOV AX, 4C01H				; Set exit code to 1
 
+;----------------------------------------------------------------------
 @@EXIT:
 
 	INT 21H
 
 EMMDEMO2 ENDP
 
-;------ CPRINT ------
+;----------------------------------------------------------------------
+; CPRINT
+;----------------------------------------------------------------------
 ;
 ; Converts number then prints string
 ;
@@ -453,7 +497,9 @@ CPRINT PROC FAR
 
 CPRINT ENDP
 
-;------ INFO ------
+;----------------------------------------------------------------------
+; INFO
+;----------------------------------------------------------------------
 ;
 ; Converts number, prints it, adds caption/info
 ;
@@ -497,3 +543,7 @@ INFO ENDP
 CSEG ENDS
 
 	END EMMDEMO2
+
+;----------------------------------------------------------------------
+; END OF EMMDEMO2
+;----------------------------------------------------------------------
