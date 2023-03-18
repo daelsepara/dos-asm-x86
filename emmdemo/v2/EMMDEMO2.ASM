@@ -50,7 +50,7 @@ CSEG SEGMENT PARA PUBLIC 'CODE'
 ;------ EMMDEMO2 ------
 ;
 ; Initialized EMM then prints
-; Base frame and available 
+; Base frame and available
 ; Expanded memory
 
 	PUBLIC EMMDEMO2
@@ -213,7 +213,7 @@ EMMDEMO2 PROC FAR
 
 	MOV AX, 8
 	PUSH AX						; Copies 8 bytes of test string to page 0
-	XOR AX, AX					
+	XOR AX, AX
 	PUSH AX						; Physical Page 0 (destination page)
 	MOV AX, OFFSET TESTSTR
 	PUSH DS						; Push test string buffer address to stack
@@ -240,12 +240,12 @@ EMMDEMO2 PROC FAR
 								; ... back to conventional memory
 								; ... one page at a time
 	JB @@ABRT06
-	JMP @@MAIN06				
+	JMP @@MAIN06
 
 @@ABRT06:
 
 	JMP @@INIT					; EMM Library was not initialized
-	
+
 @@MAIN06:
 
 	CALL @@NEWL
@@ -264,7 +264,7 @@ EMMDEMO2 PROC FAR
 
 	JB @@ABRT07
 	JMP @@MAIN07
-	
+
 @@ABRT07:
 
 	JMP @@NOUNMAP
@@ -469,7 +469,7 @@ INFO PROC FAR
 	MOV AX, [BP+0AH]			; Get number to convert
 	PUSH AX
 	CALL FAR PTR CPRINT			; Convert and print number
-    
+
 	MOV AX, [BP+08H]			; segment address of caption string
 	PUSH AX
 	MOV AX, [BP+06H]			; offset address of caption string

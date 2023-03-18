@@ -39,10 +39,10 @@ EMMCSEG SEGMENT PARA PUBLIC 'CODE'
 ; Returns:
 ;	On success:
 ;	CF is clear
-;   
+;
 ;	FAR PTR contains:
 ;	-------------------------------------------
-;	OFFSET: Description 
+;	OFFSET: Description
 ;	-------------------------------------------
 ;	0000: Expanded Memory Page Frame Segment
 ;	0002: Total number of pages in system
@@ -77,7 +77,7 @@ EMM_INIT PROC FAR
 
 	CALL EMM_INFO			; Get EMM Info
 
-	POP DX					; Restores DX, AX 
+	POP DX					; Restores DX, AX
 	POP AX					; (**) These are not the
 							; same values passed on
 							; the call to EMM_INFO
@@ -141,7 +141,7 @@ EMM_CHECK PROC FAR
 	REPZ CMPSB              ; Compare DS:SI to ES:DI
 
 	JNZ @@EMSERROR			; EMM is not present if names do not match
-		
+
 	XOR AX, AX				; Set error code = 0, EMM driver present
 
 	JMP @@SETCODE
@@ -212,7 +212,7 @@ EMM_TEST PROC FAR
 	INT 21H
 
 	JB @@DOSERROR			; Exit on error
-		
+
 	MOV BX, AX             	; File handle in AX after DOS call to 3DH
 
 	MOV AX, 4407H          	; IOCTL - Get Output Status
@@ -222,7 +222,7 @@ EMM_TEST PROC FAR
 
 	CMP AL, 0FFH			; Check if EMS device driver
 	JNZ @@NOTEMS
-	
+
 	JMP @@CLOSE
 
 @@NOTEMS:
@@ -261,7 +261,7 @@ EMM_TEST PROC FAR
 	POP DX					; Restore registers
 	POP BX
 	POP AX
-	POP DS						
+	POP DS
 
 	JZ @@OK					; Set CF
 
@@ -360,10 +360,10 @@ EMM_OK  ENDP
 ; Returns:
 ;	On success:
 ;	CF is clear
-;   
+;
 ;	FAR PTR contains:
 ;	-------------------------------------------
-;	OFFSET: Description 
+;	OFFSET: Description
 ;	-------------------------------------------
 ;	0000: Expanded Memory Page Frame Segment
 ;	0002: Total number of pages in system
@@ -404,14 +404,14 @@ EMM_INFO PROC FAR
 	JNZ @@EMSERROR
 
 	MOV ES:[DI+OFFBASE], BX	; Set EMM Page Frame Segment
-	MOV WORD PTR [EMMBASE], BX		
+	MOV WORD PTR [EMMBASE], BX
 
 	MOV AH, 42H				; Get Page Counts
 	INT 67H
 
 	OR AH, AH
 	JNZ @@EMSERROR
-		
+
 	MOV ES:[DI+OFFSIZE], DX	; Set total number of pages
 	MOV ES:[DI+OFFFREE], BX	; Set total number of unallocated pages
 
@@ -482,7 +482,7 @@ EMM_INFO ENDP
 ; get handle.
 ;
 ; Inputs:
-;	BP+06 = Number of pages to allocate (WORD) 
+;	BP+06 = Number of pages to allocate (WORD)
 ;
 ;	On success:
 ;	CF is clear
@@ -502,7 +502,7 @@ EMM_ALLOC PROC FAR
 	PUSHF					; Save flags
 
 	PUSH DS					; Save registers
-	PUSH BX					
+	PUSH BX
 	PUSH DX
 
 	MOV AX, EMMDSEG			; Point to EMM Lib
@@ -529,7 +529,7 @@ EMM_ALLOC PROC FAR
 
 	MOV AL, AH				; Set error code
 	XOR AH, AH
-	
+
 	MOV DX, 0FFFFH			; Set handle to -1
 
 @@SETCODE:
@@ -555,9 +555,9 @@ EMM_ALLOC PROC FAR
 	JMP @@EXIT
 
 @@OK:
-		
+
 	POPF
-	
+
 	CLC						; Clear CF = No Error
 
 @@EXIT:
@@ -739,7 +739,7 @@ EMM_MAP ENDP
 ;	BP+0E =  OFFSET address of source/destination array
 ;	BP+10 = SEGMENT address of source/destination array
 ;	BP+12 = Physical Page number
-;	BP+14 = Number of Bytes to copy 
+;	BP+14 = Number of Bytes to copy
 ;	BP+06 = Direction
 ;	      = if == 0 conventional to expanded mem
 ;	      = if != 0 expanded mem to conventional
@@ -757,7 +757,7 @@ EMM_COPY PROC FAR
 
 	PUSH BP
 	MOV BP, SP
-	
+
 	PUSHF					; Save flags
 
 	PUSH DS					; Save registers
@@ -775,7 +775,7 @@ EMM_COPY PROC FAR
 
 	OR DX, DX				; Check if EMM Library
 	JZ @@ABRT01				; was initialized
-	
+
 	JMP @@MOVE01
 
 @@ABRT01:
@@ -909,18 +909,18 @@ EMM_COPY ENDP
 ;	BP+06 =  OFFSET address of source array
 ;	BP+08 = SEGMENT address of source array
 ;	BP+0A = Physical Page number
-;	BP+0C = Number of Bytes to copy 
+;	BP+0C = Number of Bytes to copy
 
 	PUBLIC EMM_PUT
 
 EMM_PUT PROC FAR
 
 	PUSH AX					; Save AX
-	
+
 	XOR AX, AX				; Copy
 	PUSH AX
 	CALL FAR PTR EMM_COPY
-	
+
 	POP AX					; Restore AX
 
 	RET 8
@@ -940,18 +940,18 @@ EMM_PUT ENDP
 ;	BP+06 =  OFFSET address of source array
 ;	BP+08 = SEGMENT address of source array
 ;	BP+0A = Physical Page number
-;	BP+0C = Number of Bytes to copy 
+;	BP+0C = Number of Bytes to copy
 
 	PUBLIC EMM_GET
 
 EMM_GET PROC FAR
 
 	PUSH AX					; Save AX
-	
+
 	MOV AX, 0FFFFH			; Copy
 	PUSH AX
 	CALL FAR PTR EMM_COPY
-	
+
 	POP AX					; Restore AX
 
 	RET 8

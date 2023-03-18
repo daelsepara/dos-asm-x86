@@ -3,9 +3,9 @@
 ; Uses EMM Library
 
 	LOCALS @@
-		
+
 	TITLE EMMDEMO
-		
+
 	.MODEL SMALL
 	.STACK 0100H
 
@@ -48,7 +48,7 @@ CSEG SEGMENT PARA PUBLIC 'CODE'
 ;------ EMMDEMO ------
 ;
 ; Initialized EMM then prints
-; Base frame and available 
+; Base frame and available
 ; Expanded memory
 ;
 ; Uses EMMLIB
@@ -61,10 +61,10 @@ EMMDEMO PROC FAR
 
 	MOV AX, DSEG            	; Initialize DS
 	MOV DS, AX
-		
+
 	CALL FAR PTR EMM_INIT   	; Initialize Expanded Memory Manager
 	JC @@ABRT00            		; and EMM data. Exit on error
-		
+
 	JMP @@MAIN00				; On success:
 								; AX = Base Frame
 								; BX = Free pages
@@ -82,21 +82,21 @@ EMMDEMO PROC FAR
 	MOV DS:[EMMFREE], BX
 	MOV DS:[EMMSIZE], DX
 
-	CALL @@NEWL	
+	CALL @@NEWL
 	MOV CX, 10H             	; Set conversion to base 16
 	MOV AX, DS:[EMMBASE]    	; Show base frame info
-	MOV DX, OFFSET SBASE    
+	MOV DX, OFFSET SBASE
 	CALL FAR PTR INFO
-		
+
 	MOV CX, 0AH             	; Set succeeding conversions to base 10
 	MOV AX, 4000H           	; Show page size 4000H = 16384 (size of page in bytes)
 	MOV DX, OFFSET SPAGE
 	CALL FAR PTR INFO
-		
+
 	MOV AX, DS:[EMMSIZE]    	; Show total number of pages
-	MOV DX, OFFSET STOTAL   
+	MOV DX, OFFSET STOTAL
 	CALL FAR PTR INFO
-		
+
 	MOV AX, DS:[EMMFREE]    	; Show free pages
 	MOV DX, OFFSET SFREE
 	CALL FAR PTR INFO
@@ -109,14 +109,14 @@ EMMDEMO PROC FAR
 @@ABRT01:
 
 	JMP @@LESS
-	
-@@MAIN01:		
+
+@@MAIN01:
 
 	MOV AX, ALLOC				; Allocate pages
 	CALL EMM_ALLOC
 	JC @@ABRT02
 	JMP @@MAIN02
-	
+
 @@ABRT02:
 
 	JMP @@FAIL
@@ -124,7 +124,7 @@ EMMDEMO PROC FAR
 @@MAIN02:
 
 	MOV DS:[EMMHNDL], AX		; Save handle
-		
+
 	MOV CX, 0AH					; Show number of pages allocated
 	MOV AX, ALLOC
 	MOV DX, OFFSET SALLOC
@@ -133,19 +133,19 @@ EMMDEMO PROC FAR
 	CALL @@NEWL
 	MOV DX, OFFSET SOK			; Show allocation success
 	CALL FAR PTR PRINT
-		
+
 	XOR AX, AX					; Physical Page
 	XOR BX, BX					; Logical Page
 	MOV DX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_MAP				; Map logical page 0 to physical page 0
 	JC @@ABRT03
 	JMP @@MAIN03
-	
+
 @@ABRT03:
 
 	JMP @@NOMAP
 
-@@MAIN03:	
+@@MAIN03:
 
 	CALL @@NEWL
 	MOV DX, OFFSET SMAPPED		; Logical page 0 was mapped to physical Page 0
@@ -160,12 +160,12 @@ EMMDEMO PROC FAR
 	CALL FAR PTR EMM_MOVE		; Copies data from conventional memory
 	JC @@ABRT05					; ... to expanded memory
 								; ... one page at a time
-	
+
 	MOV DX, OFFSET TESTSTR		; Copy test string to page 0
 	CALL FAR PTR EMM_MOVE
 	JC @@ABRT05
 	JMP @@MAIN05
-	
+
 @@ABRT05:
 
 	JMP @@INIT					; EMM Library was not initialized
@@ -178,35 +178,35 @@ EMMDEMO PROC FAR
 	CALL FAR PTR EMM_COPY		; Copies data from expanded memory
 	JC @@ABRT06					; ... back to conventional memory
 	JMP @@MAIN06				; ... one page at a time
-	
+
 @@ABRT06:
 
 	JMP @@INIT					; EMM Library was not initialized
-	
+
 @@MAIN06:
 
 	PUSH DX						; Print data copied from page (EMMTEST)
 	CALL @@NEWL
 	POP DX
-	CALL FAR PTR PRINT		
-	
+	CALL FAR PTR PRINT
+
 	MOV BX, 0FFFFH				; Unmap Page 0
 	XOR AX, AX
 	MOV DX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_MAP
 	JC @@ABRT07
 	JMP @@MAIN07
-	
+
 @@ABRT07:
 
 	JMP @@NOUNMAP
-	
+
 @@MAIN07:
-	
+
 	CALL @@NEWL
 	MOV DX, OFFSET SUNMAP		; Page 0 was unmapped
 	CALL FAR PTR PRINT
-		
+
 	MOV AX, DS:[EMMHNDL]		; Get handle
 	CALL EMM_FREE				; Free allocated expanded memory
 	JC @@ABRT08
@@ -215,13 +215,13 @@ EMMDEMO PROC FAR
 @@ABRT08:
 
 	JMP @@LEAK
-	
+
 @@MAIN08:
-				
+
 	CALL @@NEWL
 	MOV DX, OFFSET SFREED		; Expanded memory was freed
 	CALL FAR PTR PRINT
-		
+
 @@OK:
 
 	MOV AX, 4C00H           	; Set exit code to 0
@@ -276,18 +276,18 @@ EMMDEMO PROC FAR
 	MOV DX, OFFSET SFUNMAP		; Physical page was not unmapped
 	CALL FAR PTR PRINT
 	JMP @@ERROR
-				
+
 @@NOEMM:
 
 	CALL @@NEWL
 	MOV DX, OFFSET SNONE    	; Expanded memory manager is not available
 	CALL FAR PTR PRINT
 
-@@ERROR:		
+@@ERROR:
 
 	MOV AX, 4C01H           	; Set exit code to 1
 
-@@EXIT:         
+@@EXIT:
 
 	INT 21H
 
@@ -304,22 +304,22 @@ EMMDEMO ENDP
 	PUBLIC CLEAR
 
 CLEAR PROC FAR
-		
+
 	PUSHF						; Save registers
 	PUSH ES
 	PUSH AX
 	PUSH DI
-		
+
 	MOV AL, ' '					; Clear buffer
 
 	CLD
 	REPZ STOSB
-		
+
 	POP DI						; Restore registers
 	POP AX
 	POP ES
 	POPF
-		
+
 	RET
 
 CLEAR ENDP
@@ -336,40 +336,40 @@ CLEAR ENDP
 	PUBLIC CONVERT
 
 CONVERT PROC FAR
-		
+
 	PUSHF						; Save registers
 	PUSH ES
 	PUSH AX
 	PUSH DX
 	PUSH DI
-		
+
 @@LOOP:
-	
+
 	XOR DX, DX					; Clear upper half of 32bit number in DX:AX
 	DIV CX						; Process one digit at a time
-		
+
 	CMP DL, 09H					; Check if remainder is not numeric
 	JA @@FIX
-		
+
 	ADD DL, '0'					; Convert digit to ASCII equivalent
 	JMP @@STORE
 
 @@FIX:
-	
+
 	ADD DL, 37H					; Convert digit to A-Z
-		
-@@STORE:                
-	
+
+@@STORE:
+
 	MOV ES:[DI], DL				; Store in buffer then move to next location
 	DEC DI
-	
+
 	OR AX, AX					; Check if there are any digits left to convert
 	JZ @@END
-	
+
 	JMP @@LOOP
-		
+
 @@END:
-	
+
 	POP DI						; Restore registers
 	POP DX
 	POP AX
@@ -391,18 +391,18 @@ CONVERT ENDP
 ;	CX = String Length
 
 	PUBLIC STRLEN
-		
+
 STRLEN PROC FAR
 
 	PUSH ES						; Save registers
 	PUSH AX
 	PUSH DI
 	PUSHF
-		
+
 	MOV AX, DS					; Copy DS:DX into ES:DI
 	MOV ES, AX
 	MOV DI, DX
-		
+
 	XOR AX, AX					; Scan for end of string (NULL = 00H)
 	XOR CX, CX					; Initialize string length
 
@@ -421,7 +421,7 @@ STRLEN PROC FAR
 	POP DI
 	POP AX
 	POP ES
-		
+
 	RETF
 
 STRLEN ENDP
@@ -437,17 +437,17 @@ STRLEN ENDP
 	PUBLIC PRINT
 
 PRINT PROC FAR
-		
+
 	PUSHF						; Save registers
 	PUSH AX
 	PUSH BX
 	PUSH CX
-		
+
 	CALL FAR PTR STRLEN			; Get string length into CX
-		
+
 	OR CX, CX					; Check if there are
 	JZ @@EXIT					; text to print
-		
+
 	MOV AH, 40H					; Print using DOS service
 MOV BX, 0001H					; Print to STDOUT
 	INT 21H
@@ -458,7 +458,7 @@ MOV BX, 0001H					; Print to STDOUT
 	POP BX
 	POP AX
 	POPF
-		
+
 	RET
 
 PRINT ENDP
@@ -487,28 +487,28 @@ CPRINT PROC FAR
 	MOV DS, AX
 	MOV DX, OFFSET BUFFER
 	MOV ES, AX					; Point ES:DI to start of buffer
-	MOV DI, DX				
-		
+	MOV DI, DX
+
 	PUSH CX						; Save base number in stack
 
 	MOV CX, 06H					; Clear buffer (6 characters)
 	CALL FAR PTR CLEAR
 
 	POP CX						; Restore base number in CX
-		
+
 	ADD DI, 05H					; Point ES:DI to end of buffer
-		
+
 	POP AX						; Restore number in AX
-		
+
 	CALL FAR PTR CONVERT		; Do conversion
 	CALL FAR PTR PRINT			; ... then print
-		
+
 	POP DI						; Restore registers
 	POP DX
 	POP ES
 	POP DS
 	POPF
-		
+
 	RET
 
 CPRINT ENDP
@@ -525,7 +525,7 @@ CPRINT ENDP
 	PUBLIC INFO
 
 INFO PROC FAR
-		
+
 	CALL FAR PTR CPRINT			; Convert and print number
 	CALL FAR PTR PRINT			; Print caption
 

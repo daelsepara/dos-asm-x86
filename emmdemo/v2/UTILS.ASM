@@ -126,7 +126,7 @@ CONVERT PROC FAR
 
 	ADD DL, 37H			; Convert digit to A-Z
 
-@@STORE:                
+@@STORE:
 
 	MOV ES:[DI], DL		; Store in buffer then move to next location
 	DEC DI
