@@ -3,9 +3,9 @@
 ; Uses EMM Library v2.0, Utils
 
 	LOCALS @@
-		
+
 	TITLE EMMDEMO2
-		
+
 	.MODEL SMALL
 	.STACK 0400H				; Increased stack stize
 
@@ -63,66 +63,67 @@ EMMDEMO2 PROC FAR
 	MOV AX, DSEG            	; Initialize DS
 	MOV DS, AX
 
+	MOV AX, OFFSET EMMBASE
 	PUSH DS						; Push DSEG:EMMBASE
-	MOV AX, OFFSET EMMBASE		; as parameters to EMM_INIT
-	PUSH AX                 
+	PUSH AX						; as parameters to EMM_INIT
 	CALL FAR PTR EMM_INIT		; Initialize Expanded Memory Manager
-	JB @@ABRT00					; and EMM data. Exit on error
-		
+								; and EMM data
+
+	JB @@ABRT00					; Exit on error
 	JMP @@MAIN00				; On success:
 								; EMM Info in:
 								; DSEG:EMMBASE = Page frame
 								; DSEG:EMMSIZE = Total pages
 								; DSEG:EMMFREE = Unallocated pages
                             	; DSEG:EMMVERS = EMS Version number
-
 @@ABRT00:
 
 	JMP  @@NOEMM				; NOEMM is beyond a SHORT jump
 								; ... so we JMP short to @@ABORT
 								; ... then JMP to @NOEMM
-
 @@MAIN00:
 
 	CALL @@NEWL
-	
+
 	MOV CX, 10H					; Set conversion to base 16
-	XOR AH, AH
-	MOV AL, DS:[EMMVERS]		; Show version
-	MOV DX, OFFSET SVERS
+
+	MOV AL, DS:[EMMVERS]		; Get version number
+	XOR AH, AH					; Clear upper byte
+	MOV DX, OFFSET SVERS		; Show version
 	PUSH CX						; Push base
 	PUSH AX						; Push number
 	PUSH DS						; Push caption segment
 	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
 
-	MOV AX, DS:[EMMBASE]		; Show base frame info
-	MOV DX, OFFSET SBASE
+	MOV AX, DS:[EMMBASE]
+	MOV DX, OFFSET SBASE		; Show base frame info
 	PUSH CX						; Push base
 	PUSH AX						; Push number
 	PUSH DS						; Push caption segment
 	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
-		
+
 	MOV CX, 0AH					; Set succeeding conversions to base 10
-	MOV AX, 4000H				; Show page size 4000H = 16384 (size of page in bytes)
-	MOV DX, OFFSET SPAGE
+
+	MOV AX, 4000H
+	MOV DX, OFFSET SPAGE		; Show page size 4000H = 16384 (size of page in bytes)
 	PUSH CX						; Push base
 	PUSH AX						; Push number
 	PUSH DS						; Push caption segment
 	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
-		
-	MOV AX, DS:[EMMSIZE]		; Show total number of pages
-	MOV DX, OFFSET STOTAL   
+
+	MOV AX, DS:[EMMSIZE]
+	MOV DX, OFFSET STOTAL		; Show total number of pages
 	PUSH CX						; Push base
 	PUSH AX						; Push number
 	PUSH DS						; Push caption segment
 	PUSH DX						; Push caption offset
 	CALL FAR PTR INFO
-		
-	MOV AX, DS:[EMMFREE]		; Show free pages
-	MOV DX, OFFSET SFREE
+
+	MOV AX, DS:[EMMFREE]
+	MOV DX, OFFSET SFREE		; Show free pages
 	PUSH CX						; Push base
 	PUSH AX						; Push number
 	PUSH DS						; Push caption segment
@@ -131,23 +132,23 @@ EMMDEMO2 PROC FAR
 
 	MOV AX, DS:[EMMFREE]		; Check if we have enough memory
 	CMP AX, ALLOC
+
 	JB @@ABRT01
-    
 	JMP @@MAIN01
 
 @@ABRT01:
 
 	JMP @@LESS
-	
+
 @@MAIN01:
 
 	MOV AX, ALLOC				; Allocate pages
 	PUSH AX
 	CALL EMM_ALLOC
-	JB @@ABRT02
 
+	JB @@ABRT02
 	JMP @@MAIN02
-	
+
 @@ABRT02:
 
 	JMP @@FAIL
@@ -155,10 +156,11 @@ EMMDEMO2 PROC FAR
 @@MAIN02:
 
 	MOV DS:[EMMHNDL], AX		; Save handle
-		
-	MOV CX, 0AH					; Show number of pages allocated
+
+	MOV CX, 0AH					; Set base number to 10
+
 	MOV AX, ALLOC
-	MOV DX, OFFSET SALLOC
+	MOV DX, OFFSET SALLOC		; Show number of pages allocated
 	PUSH CX						; Push base
 	PUSH AX						; Push number
 	PUSH DS						; Push caption segment
@@ -170,20 +172,19 @@ EMMDEMO2 PROC FAR
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
-		
+
 	XOR AX, AX
-    
 	PUSH AX						; Push Physical Page 0 to stack
 	PUSH AX						; Push Logical Page 0 to stack
 	MOV AX, DS:[EMMHNDL]		; Get handle
 	PUSH AX						; Push handle to stack
 	CALL EMM_MAP				; Map logical page 0 to physical page 0
+
 	JB @@ABRT03
-	
 	JMP @@MAIN03
-	
+
 @@ABRT03:
-	
+
 	JMP @@NOMAP
 
 @@MAIN03:
@@ -196,30 +197,32 @@ EMMDEMO2 PROC FAR
 
 @@ABRT04:
 @@MAIN04:
-    
+
 	MOV AX, 8
 	PUSH AX						; Copy 8 bytes
-	XOR AX, AX					; Physical Page 0 (destination page)
-	PUSH AX                 
-	PUSH DS						; Push null string buffer to stack
-	MOV AX, OFFSET NULLSTR  
-	PUSH AX
+	XOR AX, AX
+	PUSH AX						; Physical Page 0 (destination page)
+	MOV AX, OFFSET NULLSTR
+	PUSH DS						; Push null string buffer address in (DS:AX)
+	PUSH AX						; to stack
 	CALL FAR PTR EMM_PUT		; Copies data from conventional memory
-	JB @@ABRT05					; ... to expanded memory
+								; ... to expanded memory
 								; ... one page at a time
-	
-	MOV AX, 8					; Copies 8 bytes of test string to page 0
-	PUSH AX
-	XOR AX, AX					; Physical Page 0 (destination page)
-	PUSH AX
-	PUSH DS
-	MOV AX, OFFSET TESTSTR		; Push test string buffer to stack
-	PUSH AX
-	CALL FAR PTR EMM_PUT
+
 	JB @@ABRT05
 
+	MOV AX, 8
+	PUSH AX						; Copies 8 bytes of test string to page 0
+	XOR AX, AX					
+	PUSH AX						; Physical Page 0 (destination page)
+	MOV AX, OFFSET TESTSTR
+	PUSH DS						; Push test string buffer address to stack
+	PUSH AX
+	CALL FAR PTR EMM_PUT
+
+	JB @@ABRT05
 	JMP @@MAIN05
-	
+
 @@ABRT05:
 
 	JMP @@INIT					; EMM Library was not initialized
@@ -230,14 +233,15 @@ EMMDEMO2 PROC FAR
 	PUSH AX
 	XOR AX, AX					; Physical Page 0 (source page)
 	PUSH AX
-	PUSH DS
-	MOV AX, OFFSET EMMTEST		; Push destination to stack
+	MOV AX, OFFSET EMMTEST
+	PUSH DS						; Push destination array address to stack
 	PUSH AX
 	CALL FAR PTR EMM_GET		; Copies data from expanded memory
-	JB @@ABRT06					; ... back to conventional memory
-	
-	JMP @@MAIN06				; ... one page at a time
-	
+								; ... back to conventional memory
+								; ... one page at a time
+	JB @@ABRT06
+	JMP @@MAIN06				
+
 @@ABRT06:
 
 	JMP @@INIT					; EMM Library was not initialized
@@ -248,52 +252,50 @@ EMMDEMO2 PROC FAR
 	MOV DX, OFFSET EMMTEST		; Print data copied from page (EMMTEST)
 	PUSH DS
 	PUSH DX
-	CALL FAR PTR PRINT		
-	
-	XOR AX, AX					; Physical page 0
-	PUSH AX
-	MOV BX, 0FFFFH				; Unmap Page 0
+	CALL FAR PTR PRINT
+
+	XOR AX, AX
+	PUSH AX						; Physical page 0
+	MOV BX, 0FFFFH				; Unmap Page
 	PUSH AX
 	MOV AX, DS:[EMMHNDL]		; Get handle
 	PUSH AX
+	CALL EMM_MAP				; Unmap physical page 0
 
-	CALL EMM_MAP				; Map logical page 0
-	JB @@ABRT07					; to physical page 0
-	
+	JB @@ABRT07
 	JMP @@MAIN07
 	
 @@ABRT07:
 
 	JMP @@NOUNMAP
-	
+
 @@MAIN07:
-	
+
 	CALL @@NEWL
 	MOV DX, OFFSET SUNMAP		; Page 0 was unmapped
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
-		
+
 	MOV AX, DS:[EMMHNDL]		; Get handle
 	PUSH AX
-
 	CALL EMM_FREE				; Free allocated expanded memory
-	JB @@ABRT08
 
+	JB @@ABRT08
 	JMP @@MAIN08
 
 @@ABRT08:
 
 	JMP @@LEAK
-	
+
 @@MAIN08:
-				
+
 	CALL @@NEWL
 	MOV DX, OFFSET SFREED		; Expanded memory was freed
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
-		
+
 @@OK:
 
 	MOV AX, 4C00H				; Set exit code to 0
@@ -305,6 +307,7 @@ EMMDEMO2 PROC FAR
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
+
 	RETN
 
 @@LESS:
@@ -314,6 +317,7 @@ EMMDEMO2 PROC FAR
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
+
 	JMP @@ERROR
 
 @@FAIL:
@@ -323,6 +327,7 @@ EMMDEMO2 PROC FAR
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
+
 	JMP @@ERROR
 
 @@NOMAP:
@@ -332,6 +337,7 @@ EMMDEMO2 PROC FAR
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
+
 	JMP @@ERROR
 
 @@INIT:
@@ -341,6 +347,7 @@ EMMDEMO2 PROC FAR
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
+
 	JMP @@ERROR
 
 @@LEAK:
@@ -350,6 +357,7 @@ EMMDEMO2 PROC FAR
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
+
 	JMP @@ERROR
 
 @@NOUNMAP:
@@ -359,8 +367,9 @@ EMMDEMO2 PROC FAR
 	PUSH DS
 	PUSH DX
 	CALL FAR PTR PRINT
+
 	JMP @@ERROR
-				
+
 @@NOEMM:
 
 	CALL @@NEWL
@@ -369,7 +378,7 @@ EMMDEMO2 PROC FAR
 	PUSH DX
 	CALL FAR PTR PRINT
 
-@@ERROR:		
+@@ERROR:
 
 	MOV AX, 4C01H				; Set exit code to 1
 
@@ -394,7 +403,7 @@ CPRINT PROC FAR
 	PUSH BP
 	MOV BP, SP
 
-	PUSHF
+	PUSHF						; Save flags
 	PUSH DS                     ; Save registers
 	PUSH AX
 
@@ -402,32 +411,32 @@ CPRINT PROC FAR
 	MOV DS, AX
 
 	MOV AX, ' '
-	PUSH AX                     ; byte used to fill
+	PUSH AX						; byte used to fill
 	MOV AX, 6
-	PUSH AX                     ; fill up to 6 characters
-	PUSH DS                     ; Buffer segment
-	MOV AX, OFFSET BUFFER       ; Buffer offset
+	PUSH AX						; fill up to 6 characters
+	MOV AX, OFFSET BUFFER
+	PUSH DS						; pointer to buffer
 	PUSH AX
 	CALL FAR PTR FILL           ; clear buffer
 
-	MOV AX, 6                   ; width of buffer
-	PUSH AX
-	MOV AX, [BP+08H]			; Base
-	PUSH AX		
-	MOV AX, [BP+06H]			; Number to convert
-	PUSH AX
-	PUSH DS                     ; Buffer segment
-	MOV AX, OFFSET BUFFER       ; Buffer offset
+	MOV AX, 6
+	PUSH AX						; width of buffer
+	MOV AX, [BP+08H]
+	PUSH AX						; Base
+	MOV AX, [BP+06H]
+	PUSH AX						; Number to convert
+	MOV AX, OFFSET BUFFER
+	PUSH DS                     ; pointer to buffer
 	PUSH AX
 	CALL FAR PTR CONVERT        ; Convert number
-    
+
 	PUSH DS
 	PUSH AX
 	CALL FAR PTR PRINT          ; Print converted number
 
 	POP AX						; Restore registers
 	POP DS
-	POPF
+	POPF						; Restore flags
 
 	POP BP
 
@@ -452,8 +461,8 @@ INFO PROC FAR
 	PUSH BP
 	MOV BP, SP
 
-	PUSHF						; Save registers
-	PUSH AX
+	PUSHF						; Save flags
+	PUSH AX						; Save registers
 
 	MOV AX, [BP+0CH]			; Get base
 	PUSH AX
@@ -461,14 +470,14 @@ INFO PROC FAR
 	PUSH AX
 	CALL FAR PTR CPRINT			; Convert and print number
     
-	MOV AX, [BP+08H]			; caption string segment
+	MOV AX, [BP+08H]			; segment address of caption string
 	PUSH AX
-	MOV AX, [BP+06H]			; caption string offset
+	MOV AX, [BP+06H]			; offset address of caption string
 	PUSH AX
-	CALL FAR PTR PRINT			; Print caption
+	CALL FAR PTR PRINT			; Print caption string
 
 	POP AX						; Restore registers
-	POPF
+	POPF						; Restore flags
 
 	POP BP
 
