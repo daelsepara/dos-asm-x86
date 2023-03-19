@@ -1031,7 +1031,22 @@ EMM_COPY PROC FAR
 @@MOVE:
 
 	CLD
+
+	TEST CX, 1				; Check if we can do word transfers
+	
+	JZ @@XFERWORD
+
+@@XFERBYTE:
+	
 	REPZ MOVSB				; Copy data
+	
+	JMP @@DONE
+
+@@XFERWORD:
+	
+	SHR CX, 1				; Transfer words
+	
+	REPZ MOVSW
 
 ;----------------------------------------------------------------------
 @@DONE:
