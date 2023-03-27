@@ -26,7 +26,6 @@ LABEL00:
     MOV DS, AX
 
     XOR AX, AX
-
     MOV BX, OFFSET SCRATCH
     MOV	WORD PTR [BX], AX
 
@@ -35,7 +34,6 @@ LABEL00:
 LABEL01:
 
     FINIT
-
     FSTCW	[BX]
 
     MOV	CX, 0014H
