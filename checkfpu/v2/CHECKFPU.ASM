@@ -71,10 +71,10 @@ LABEL04:
     FINIT
     FLD1
     FLDZ
-    FDIVP ST(1), ST
+    FDIVP
     FLD ST(0)
     FCHS
-    FCOMPP ST(1)
+    FCOMPP
     FSTSW [BX]
     
     WAIT

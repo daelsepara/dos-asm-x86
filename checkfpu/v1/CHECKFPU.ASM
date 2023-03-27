@@ -1,8 +1,10 @@
 PAGE 60, 132
 
 ; CHECK FPU.ASM
+;
 ; Determine the type of math coprocessor (FPU) installed
-
+;
+; From Terry Dettmann's DOS Programmer's Reference Manual (4th Edition, 1993)
     .MODEL SMALL
     .STACK
     .DATA
@@ -45,6 +47,7 @@ CHECKFPU PROC
     FLDZ                        ; Push 0.0 onto the chip's stack
     FDIV                        ; Produce positive infinity
     FLD ST                      ; Produce negative inifinity
+    FCHS                        ; FIX: Missing from original code
     FCOMPP                      ; Compare
     FSTSW   SCRATCH             ; Write the status word
     MOV     AX, SCRATCH
