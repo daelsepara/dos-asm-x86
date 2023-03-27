@@ -8,4 +8,6 @@ I am collecting in this repository all my recent experiments with the language, 
 
 - [Expanded Memory Library](emmdemo/README.md)
 
+- [CHECKFPU: Detect presence of Match Co-Processor](checkfpu/)
+
 - [Hello, World in Windos x86 ASM](helloworld-windows/)
